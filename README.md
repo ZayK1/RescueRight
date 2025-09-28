@@ -1,5 +1,5 @@
 # RescueRight: Smart Choking-Rescue Training System
-## IDEATE 2025 Competition - Team 8 NUS
+## IDEATE 2025 Semifinalist - Team Kiwi (AKSD2103)_
 
 ---
 
