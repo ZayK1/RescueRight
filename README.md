@@ -19,13 +19,13 @@
 
 ## 👥 Team Members
 
-| Name | Role | Expertise |
-|------|------|-----------|
-| **Ansh Bhaskar** | Market Analysis Lead | Business Strategy & Market Research |
-| **Phua Kai Jie** | Pitch Lead | Communication & Presentation |
-| **Kasim Zayan** | Product Differentiation Specialist | Competitive Analysis |
-| **Serena Tang** | Technical Lead | Solution Architecture |
-| **Daniel Yow** | Impact & Vision Lead | Strategic Planning |
+| Name | 
+|------|
+| **Ansh Bhaskar** | 
+| **Phua Kai Jie** | 
+| **Kasim Zayan** | 
+| **Serena Tang** | 
+| **Daniel Yow** | 
 
 ---
 
@@ -37,8 +37,8 @@
 graph LR
     A[Idea Submission] --> B[PDR<br/>Preliminary Design Review]
     B --> C[Prototyping Phase<br/>Current Stage]
-    C --> D[Semifinals<br/>Oct 15, 2025]
-    D --> E[Finals<br/>Business Pitch]
+    C --> D[Finals<br/>Oct 15, 2025]
+    D --> E[Result<br/>Business Pitch]
     
     style C fill:#f9f,stroke:#333,stroke-width:4px
     style B fill:#9f9,stroke:#333,stroke-width:2px
