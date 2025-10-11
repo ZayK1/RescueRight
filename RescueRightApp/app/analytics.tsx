@@ -6,7 +6,7 @@ import { HeroSuccessCard } from '../components/analytics/HeroSuccessCard';
 import { MetricsGrid } from '../components/analytics/MetricsGrid';
 import { TechniqueAnalysis } from '../components/analytics/TechniqueAnalysis';
 import { DevBypassButton } from '../components/shared/DevBypassButton';
-import { mockAnalyticsData } from '../lib/mockData';
+import { mockSessionSummary } from '../lib/mockData'; // Correct import
 import { theme } from '../styles/theme';
 
 export default function AnalyticsScreen() {
@@ -15,18 +15,34 @@ export default function AnalyticsScreen() {
   const handleViewHistory = () => { console.log('View history'); };
   const handleDone = () => { router.push('/'); };
 
+  // Adapt the imported data to the structure the components will expect
+  const analyticsData = {
+    overallScore: mockSessionSummary.score,
+    duration: mockSessionSummary.duration,
+    totalThrusts: mockSessionSummary.totalCompressions,
+    effectiveThrusts: Math.round(mockSessionSummary.totalCompressions * (mockSessionSummary.correctTechnique / 100)),
+    averageForce: mockSessionSummary.averageDepth,
+    forceConsistency: 85, // Placeholder
+    positionAccuracy: mockSessionSummary.correctTechnique,
+    angleAccuracy: 88, // Placeholder
+    feedback: [ // Create some mock feedback
+      { type: 'success', message: 'Excellent compression depth', detail: `Maintained an average of ${mockSessionSummary.averageDepth}mm.` },
+      { type: 'warning', message: 'Compression rate slightly fast', detail: `Average rate was ${mockSessionSummary.averageRate} CPM.` },
+    ]
+  };
+
   return (
     <View style={styles.container}>
       <SessionNavigation onBack={handleDone} />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <HeroSuccessCard score={mockAnalyticsData.overallScore} duration={mockAnalyticsData.duration} />
+        <HeroSuccessCard score={analyticsData.overallScore} duration={analyticsData.duration} />
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Performance Analytics</Text>
-          <MetricsGrid data={mockAnalyticsData} />
+          <MetricsGrid data={analyticsData} />
         </View>
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Clinical Assessment</Text>
-          <TechniqueAnalysis feedback={mockAnalyticsData.feedback} />
+          <TechniqueAnalysis feedback={analyticsData.feedback} />
         </View>
         <View style={styles.actions}>
           <TouchableOpacity style={[styles.button, styles.primaryButton]} onPress={handleNewSession}>
