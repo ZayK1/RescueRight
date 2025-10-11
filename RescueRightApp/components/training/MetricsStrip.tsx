@@ -3,122 +3,81 @@ import { View, Text, StyleSheet } from 'react-native';
 import { theme } from '../../styles/theme';
 
 interface MetricsStripProps {
-  depth: number; // mm
-  rate: number; // CPM
-  compressions: number;
+  thrusts: number;
+  avgForce: number; // Will be compression depth
+  accuracy: number; // Will be compression rate
 }
 
-export function MetricsStrip({ depth, rate, compressions }: MetricsStripProps) {
-  const getDepthStatus = (depth: number) => {
-    if (depth >= 50 && depth <= 60) return 'good';
-    if (depth >= 45 && depth <= 65) return 'warning';
-    return 'bad';
-  };
+const MetricItem = ({ label, value, unit }) => (
+  <View style={styles.metricItem}>
+    <Text style={styles.metricLabel}>{label}</Text>
+    <Text style={styles.metricValue}>
+      {value}
+      <Text style={styles.metricUnit}> {unit}</Text>
+    </Text>
+  </View>
+);
 
-  const getRateStatus = (rate: number) => {
-    if (rate >= 100 && rate <= 120) return 'good';
-    if (rate >= 90 && rate <= 130) return 'warning';
-    return 'bad';
-  };
-
-  const depthStatus = getDepthStatus(depth);
-  const rateStatus = getRateStatus(rate);
-
+export function MetricsStrip({ thrusts, avgForce, accuracy }: MetricsStripProps) {
   return (
     <View style={styles.container}>
-      <View style={styles.metric}>
-        <Text style={styles.label}>Depth</Text>
-        <View style={styles.valueRow}>
-          <Text style={[styles.value, styles[`value_${depthStatus}`]]}>{depth}</Text>
-          <Text style={styles.unit}>mm</Text>
-        </View>
-        <View style={[styles.indicator, styles[`indicator_${depthStatus}`]]} />
+      <View style={styles.strip}>
+        <MetricItem label="Compressions" value={thrusts} unit="" />
+        <View style={styles.separator} />
+        <MetricItem label="Avg. Depth" value={avgForce} unit="mm" />
+        <View style={styles.separator} />
+        <MetricItem label="Rate" value={accuracy} unit="CPM" />
       </View>
-
-      <View style={styles.divider} />
-
-      <View style={styles.metric}>
-        <Text style={styles.label}>Rate</Text>
-        <View style={styles.valueRow}>
-          <Text style={[styles.value, styles[`value_${rateStatus}`]]}>{rate}</Text>
-          <Text style={styles.unit}>CPM</Text>
-        </View>
-        <View style={[styles.indicator, styles[`indicator_${rateStatus}`]]} />
-      </View>
-
-      <View style={styles.divider} />
-
-      <View style={styles.metric}>
-        <Text style={styles.label}>Total</Text>
-        <View style={styles.valueRow}>
-          <Text style={styles.value}>{compressions}</Text>
-          <Text style={styles.unit} />
-        </View>
-        <View style={styles.indicator} />
-      </View>
+      <View style={styles.safeAreaSpacer} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
-    backgroundColor: theme.colors.card,
-    borderRadius: theme.borderRadius.lg,
-    padding: 16,
-    ...theme.shadows.sm,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    zIndex: 40,
   },
-  metric: {
-    flex: 1,
+  strip: {
+    marginHorizontal: 16,
+    height: 64,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 32,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.08)',
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-around',
+    ...theme.shadows.lg,
   },
-  label: {
-    ...theme.typography.small,
-    color: theme.colors.mutedForeground,
-    marginBottom: 8,
+  metricItem: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
   },
-  valueRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
+  metricLabel: {
+    fontSize: 12,
+    color: theme.colors.text.secondary,
   },
-  value: {
-    ...theme.typography.h2,
-    color: theme.colors.foreground,
-    fontVariant: ['tabular-nums'],
+  metricValue: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: theme.colors.text.primary,
   },
-  value_good: {
-    color: theme.colors.success,
+  metricUnit: {
+    fontSize: 12,
+    fontWeight: '400',
+    color: theme.colors.text.secondary,
   },
-  value_warning: {
-    color: theme.colors.warning,
-  },
-  value_bad: {
-    color: theme.colors.destructive,
-  },
-  unit: {
-    ...theme.typography.small,
-    color: theme.colors.mutedForeground,
-    marginLeft: 4,
-  },
-  indicator: {
-    width: 40,
-    height: 3,
-    borderRadius: 2,
-    backgroundColor: theme.colors.border,
-    marginTop: 8,
-  },
-  indicator_good: {
-    backgroundColor: theme.colors.success,
-  },
-  indicator_warning: {
-    backgroundColor: theme.colors.warning,
-  },
-  indicator_bad: {
-    backgroundColor: theme.colors.destructive,
-  },
-  divider: {
+  separator: {
     width: 1,
-    backgroundColor: theme.colors.border,
-    marginHorizontal: 12,
+    height: '50%',
+    backgroundColor: '#E5E7EB',
+  },
+  safeAreaSpacer: {
+    height: 34, // Standard safe area bottom inset
   },
 });

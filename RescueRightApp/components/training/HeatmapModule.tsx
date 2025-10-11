@@ -1,178 +1,118 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import Svg, { Rect, Circle, Path } from 'react-native-svg';
+import Animated, { useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { theme } from '../../styles/theme';
 
 interface HeatmapModuleProps {
-  handPosition: 'correct' | 'too-high' | 'too-low';
+  position: 'correct' | 'too-high' | 'too-low';
+  force: number; // This will be compressionDepth
 }
 
-export function HeatmapModule({ handPosition }: HeatmapModuleProps) {
-  // Torso SVG dimensions
-  const width = 200;
-  const height = 280;
+const positionMap = {
+  'too-high': -60,
+  'correct': 0,
+  'too-low': 60,
+};
 
-  // Define pressure zones
-  const zones = [
-    { id: 'too-high', cy: 80, label: 'Too High' },
-    { id: 'correct', cy: 140, label: 'Correct' },
-    { id: 'too-low', cy: 200, label: 'Too Low' },
-  ];
+export function HeatmapModule({ position, force }: HeatmapModuleProps) {
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ translateY: withSpring(positionMap[position] || 0) }],
+    };
+  });
 
-  const getZoneColor = (zoneId: string) => {
-    if (zoneId === handPosition) {
-      if (handPosition === 'correct') return theme.colors.success;
-      return theme.colors.warning;
-    }
-    return theme.colors.border;
-  };
-
-  const getZoneOpacity = (zoneId: string) => {
-    return zoneId === handPosition ? 0.6 : 0.2;
+  const getPositionColor = () => {
+    if (position === 'correct') return theme.colors.success;
+    return theme.colors.warning;
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Hand Position Heatmap</Text>
-
-      <View style={styles.heatmapContainer}>
-        <Svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
-          {/* Torso outline */}
-          <Path
-            d={`
-              M ${width / 2} 20
-              Q ${width / 2 - 40} 30, ${width / 2 - 50} 60
-              L ${width / 2 - 55} 140
-              Q ${width / 2 - 55} 180, ${width / 2 - 50} 220
-              L ${width / 2 - 45} 260
-              L ${width / 2 + 45} 260
-              L ${width / 2 + 50} 220
-              Q ${width / 2 + 55} 180, ${width / 2 + 55} 140
-              L ${width / 2 + 50} 60
-              Q ${width / 2 + 40} 30, ${width / 2} 20
-            `}
-            stroke={theme.colors.border}
-            strokeWidth="2"
-            fill="none"
-          />
-
-          {/* Sternum centerline */}
-          <Path
-            d={`M ${width / 2} 40 L ${width / 2} 240`}
-            stroke={theme.colors.mutedForeground}
-            strokeWidth="1"
-            strokeDasharray="4,4"
-            opacity={0.3}
-          />
-
-          {/* Pressure zones */}
-          {zones.map((zone) => (
-            <React.Fragment key={zone.id}>
-              <Circle
-                cx={width / 2}
-                cy={zone.cy}
-                r="35"
-                fill={getZoneColor(zone.id)}
-                opacity={getZoneOpacity(zone.id)}
-              />
-              <Circle
-                cx={width / 2}
-                cy={zone.cy}
-                r="35"
-                stroke={getZoneColor(zone.id)}
-                strokeWidth="2"
-                fill="none"
-                opacity={zone.id === handPosition ? 0.8 : 0.3}
-              />
-            </React.Fragment>
-          ))}
-
-          {/* Active hand position marker */}
-          {handPosition && (
-            <Circle
-              cx={width / 2}
-              cy={zones.find((z) => z.id === handPosition)?.cy || 140}
-              r="8"
-              fill={handPosition === 'correct' ? theme.colors.success : theme.colors.warning}
-            />
-          )}
-        </Svg>
-
-        {/* Legend */}
-        <View style={styles.legend}>
-          {zones.map((zone) => (
-            <View key={zone.id} style={styles.legendItem}>
-              <View
-                style={[
-                  styles.legendDot,
-                  {
-                    backgroundColor: getZoneColor(zone.id),
-                    opacity: zone.id === handPosition ? 1 : 0.3,
-                  },
-                ]}
-              />
-              <Text
-                style={[
-                  styles.legendText,
-                  { fontWeight: zone.id === handPosition ? '600' : '400' },
-                ]}
-              >
-                {zone.label}
-              </Text>
-            </View>
-          ))}
+      <View style={styles.visualization}>
+        <View style={styles.guideTrack}>
+          <Text style={styles.guideText}>Too High</Text>
+          <View style={styles.targetZone}>
+            <Text style={styles.targetText}>CORRECT ZONE</Text>
+          </View>
+          <Text style={styles.guideText}>Too Low</Text>
         </View>
+        <Animated.View style={[styles.handIndicator, { backgroundColor: getPositionColor() }, animatedStyle]}>
+          <Text style={styles.handIndicatorText}>HANDS</Text>
+        </Animated.View>
       </View>
-
-      <Text style={styles.hint}>
-        {handPosition === 'correct'
-          ? 'Maintain this hand position'
-          : 'Adjust hand position to center of chest'}
-      </Text>
+      <View style={styles.readout}>
+        <Text style={styles.readoutLabel}>Compression Depth</Text>
+        <Text style={styles.readoutValue}>{force} mm</Text>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: theme.colors.card,
-    borderRadius: theme.borderRadius.lg,
-    padding: 20,
-    ...theme.shadows.sm,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    ...theme.shadows.md,
   },
-  title: {
-    ...theme.typography.h4,
-    color: theme.colors.foreground,
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  heatmapContainer: {
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  legend: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    width: '100%',
-    marginTop: 16,
-  },
-  legendItem: {
+  visualization: {
+    height: 200,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
   },
-  legendDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginRight: 6,
+  guideTrack: {
+    height: '100%',
+    width: '80%',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 8,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 10,
   },
-  legendText: {
-    ...theme.typography.small,
-    color: theme.colors.foreground,
+  targetZone: {
+    width: '110%',
+    backgroundColor: 'rgba(5, 150, 105, 0.1)',
+    paddingVertical: 20,
+    borderColor: theme.colors.success,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderStyle: 'dashed',
+    alignItems: 'center',
   },
-  hint: {
-    ...theme.typography.small,
-    color: theme.colors.mutedForeground,
-    textAlign: 'center',
+  targetText: {
+    color: theme.colors.success,
+    fontWeight: '700',
+    fontSize: 12,
+  },
+  guideText: {
+    color: theme.colors.text.disabled,
+    fontSize: 12,
+  },
+  handIndicator: {
+    position: 'absolute',
+    width: 100,
+    height: 50,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...theme.shadows.lg,
+  },
+  handIndicatorText: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+  },
+  readout: {
+    alignItems: 'center',
+  },
+  readoutLabel: {
+    color: theme.colors.text.secondary,
+    fontSize: 14,
+  },
+  readoutValue: {
+    color: theme.colors.text.primary,
+    fontSize: 24,
+    fontWeight: 'bold',
   },
 });

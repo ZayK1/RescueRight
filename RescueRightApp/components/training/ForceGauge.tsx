@@ -1,151 +1,125 @@
-import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, Dimensions } from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-} from 'react-native-reanimated';
+import React from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+import Svg, { Circle, Path } from 'react-native-svg';
+import Animated, { useAnimatedProps, useDerivedValue, withSpring } from 'react-native-reanimated';
 import { theme } from '../../styles/theme';
 
+const AnimatedPath = Animated.createAnimatedComponent(Path);
+const GAUGE_WIDTH = 300;
+const GAUGE_HEIGHT = 180;
+const STROKE_WIDTH = 25;
+const RADIUS = (GAUGE_WIDTH / 2) - (STROKE_WIDTH / 2);
+const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+
 interface ForceGaugeProps {
-  depth: number; // Current depth in mm
-  targetMin?: number; // Target range minimum
-  targetMax?: number; // Target range maximum
+  force: number;
+  targetMin: number;
+  targetMax: number;
 }
 
-export function ForceGauge({ depth, targetMin = 50, targetMax = 60 }: ForceGaugeProps) {
-  const maxDepth = 80; // Maximum scale in mm
-  const gaugeWidth = Dimensions.get('window').width - 48;
+export function ForceGauge({ force, targetMin, targetMax }: ForceGaugeProps) {
+  // Normalize force to a 0-100 scale for simplicity
+  const normalizedForce = Math.min(Math.max(force, 0), 100);
+  const progress = useDerivedValue(() => withSpring(normalizedForce / 100, { damping: 15, stiffness: 100 }));
 
-  const progress = useSharedValue(0);
-
-  useEffect(() => {
-    const percentage = Math.min((depth / maxDepth) * 100, 100);
-    progress.value = withSpring(percentage, { damping: 15 });
-  }, [depth]);
-
-  const fillStyle = useAnimatedStyle(() => {
-    const isInTarget = depth >= targetMin && depth <= targetMax;
-    const isClose = depth >= targetMin - 10 && depth <= targetMax + 10;
-
-    let color = theme.colors.destructive;
-    if (isInTarget) color = theme.colors.success;
-    else if (isClose) color = theme.colors.warning;
-
+  const animatedProps = useAnimatedProps(() => {
     return {
-      width: `${progress.value}%`,
-      backgroundColor: color,
+      strokeDashoffset: CIRCUMFERENCE * (1 - progress.value * 0.75), // 0.75 for 270 degrees
     };
   });
 
-  const targetStartPercent = (targetMin / maxDepth) * 100;
-  const targetWidthPercent = ((targetMax - targetMin) / maxDepth) * 100;
+  const getStatus = () => {
+    if (force < targetMin) return { text: 'Too Soft', color: theme.colors.warning };
+    if (force > targetMax) return { text: 'Too Hard', color: theme.colors.error };
+    return { text: 'Optimal', color: theme.colors.success };
+  };
+
+  const status = getStatus();
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Compression Force</Text>
-        <Text style={styles.depthValue}>
-          {depth} <Text style={styles.unit}>mm</Text>
+      <Svg width={GAUGE_WIDTH} height={GAUGE_HEIGHT} viewBox={`0 0 ${GAUGE_WIDTH} ${GAUGE_HEIGHT}`}>
+        {/* Background Track */}
+        <Path
+          d={`M ${STROKE_WIDTH / 2} ${GAUGE_HEIGHT - STROKE_WIDTH / 2} A ${RADIUS} ${RADIUS} 0 1 1 ${GAUGE_WIDTH - STROKE_WIDTH / 2} ${GAUGE_HEIGHT - STROKE_WIDTH / 2}`}
+          stroke="#E5E7EB"
+          strokeWidth={STROKE_WIDTH}
+          strokeLinecap="round"
+          fill="none"
+        />
+        {/* Optimal Zone Indicator */}
+        <Path
+          d={`M ${STROKE_WIDTH / 2} ${GAUGE_HEIGHT - STROKE_WIDTH / 2} A ${RADIUS} ${RADIUS} 0 1 1 ${GAUGE_WIDTH - STROKE_WIDTH / 2} ${GAUGE_HEIGHT - STROKE_WIDTH / 2}`}
+          stroke={theme.colors.success}
+          strokeWidth={STROKE_WIDTH}
+          strokeLinecap="round"
+          fill="none"
+          strokeDasharray={CIRCUMFERENCE}
+          strokeDashoffset={CIRCUMFERENCE * (1 - (targetMax / 100) * 0.75)}
+          strokeOpacity={0.2}
+        />
+        <Path
+          d={`M ${STROKE_WIDTH / 2} ${GAUGE_HEIGHT - STROKE_WIDTH / 2} A ${RADIUS} ${RADIUS} 0 1 1 ${GAUGE_WIDTH - STROKE_WIDTH / 2} ${GAUGE_HEIGHT - STROKE_WIDTH / 2}`}
+          stroke={theme.colors.success}
+          strokeWidth={STROKE_WIDTH}
+          strokeLinecap="round"
+          fill="none"
+          strokeDasharray={CIRCUMFERENCE}
+          strokeDashoffset={CIRCUMFERENCE * (1 - (targetMin / 100) * 0.75) + (CIRCUMFERENCE * ((targetMax - targetMin) / 100) * 0.75)}
+          strokeOpacity={0.2}
+        />
+        {/* Animated Progress */}
+        <AnimatedPath
+          d={`M ${STROKE_WIDTH / 2} ${GAUGE_HEIGHT - STROKE_WIDTH / 2} A ${RADIUS} ${RADIUS} 0 1 1 ${GAUGE_WIDTH - STROKE_WIDTH / 2} ${GAUGE_HEIGHT - STROKE_WIDTH / 2}`}
+          stroke={status.color}
+          strokeWidth={STROKE_WIDTH}
+          strokeLinecap="round"
+          fill="none"
+          strokeDasharray={CIRCUMFERENCE}
+          animatedProps={animatedProps}
+        />
+      </Svg>
+      <View style={styles.textContainer}>
+        <Text style={styles.forceValue}>{Math.round(force)}<Text style={styles.unit}> mm</Text></Text>
+        <Text style={[styles.statusText, { color: status.color, backgroundColor: `${status.color}20` }]}>
+          {status.text}
         </Text>
       </View>
-
-      <View style={styles.gaugeContainer}>
-        {/* Target zone indicator */}
-        <View
-          style={[
-            styles.targetZone,
-            {
-              left: `${targetStartPercent}%`,
-              width: `${targetWidthPercent}%`,
-            },
-          ]}
-        />
-
-        {/* Track */}
-        <View style={styles.track}>
-          <Animated.View style={[styles.fill, fillStyle]} />
-        </View>
-
-        {/* Scale markers */}
-        <View style={styles.scaleContainer}>
-          <Text style={styles.scaleText}>0</Text>
-          <Text style={styles.scaleText}>
-            {targetMin}-{targetMax} mm
-          </Text>
-          <Text style={styles.scaleText}>{maxDepth}</Text>
-        </View>
-      </View>
-
-      <Text style={styles.hint}>
-        {depth < targetMin && 'Press deeper'}
-        {depth >= targetMin && depth <= targetMax && 'Perfect depth!'}
-        {depth > targetMax && 'Too deep'}
-      </Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: theme.colors.card,
-    borderRadius: theme.borderRadius.lg,
-    padding: 20,
-    ...theme.shadows.sm,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
     alignItems: 'center',
-    marginBottom: 16,
+    justifyContent: 'center',
+    ...theme.shadows.md,
   },
-  title: {
-    ...theme.typography.h4,
-    color: theme.colors.foreground,
+  textContainer: {
+    position: 'absolute',
+    alignItems: 'center',
+    bottom: 30,
   },
-  depthValue: {
-    ...theme.typography.h3,
-    color: theme.colors.foreground,
-    fontVariant: ['tabular-nums'],
+  forceValue: {
+    fontSize: 48,
+    fontWeight: 'bold',
+    color: theme.colors.text.primary,
   },
   unit: {
-    ...theme.typography.small,
-    color: theme.colors.mutedForeground,
+    fontSize: 18,
+    fontWeight: 'normal',
+    color: theme.colors.text.secondary,
   },
-  gaugeContainer: {
-    position: 'relative',
-    marginBottom: 12,
-  },
-  targetZone: {
-    position: 'absolute',
-    height: 16,
-    backgroundColor: theme.colors.success + '20',
-    borderRadius: 8,
-    top: 0,
-  },
-  track: {
-    height: 16,
-    backgroundColor: theme.colors.border,
-    borderRadius: 8,
+  statusText: {
+    marginTop: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    fontSize: 14,
+    fontWeight: '600',
     overflow: 'hidden',
-  },
-  fill: {
-    height: '100%',
-    borderRadius: 8,
-  },
-  scaleContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 8,
-  },
-  scaleText: {
-    ...theme.typography.small,
-    color: theme.colors.mutedForeground,
-  },
-  hint: {
-    ...theme.typography.small,
-    color: theme.colors.mutedForeground,
-    textAlign: 'center',
-    marginTop: 8,
   },
 });

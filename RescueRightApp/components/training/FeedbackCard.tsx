@@ -1,108 +1,74 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { CheckCircle, AlertTriangle, XCircle, Info } from 'lucide-react-native';
 import { theme } from '../../styles/theme';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
+
+type FeedbackType = 'success' | 'warning' | 'error' | 'info';
 
 interface FeedbackCardProps {
-  handPosition: 'correct' | 'too-high' | 'too-low';
-  recoilComplete: boolean;
+  message: string;
+  type: FeedbackType;
 }
 
-export function FeedbackCard({ handPosition, recoilComplete }: FeedbackCardProps) {
-  const handPositionData = {
-    correct: {
-      icon: '✓',
-      text: 'Hand Position: Correct',
-      color: theme.colors.success,
-      bgColor: theme.colors.success + '15',
-    },
-    'too-high': {
-      icon: '⬆',
-      text: 'Hand Position: Too High',
-      color: theme.colors.warning,
-      bgColor: theme.colors.warning + '15',
-    },
-    'too-low': {
-      icon: '⬇',
-      text: 'Hand Position: Too Low',
-      color: theme.colors.warning,
-      bgColor: theme.colors.warning + '15',
-    },
-  };
+const iconMap = {
+  success: <CheckCircle size={24} color={theme.colors.success} />,
+  warning: <AlertTriangle size={24} color={theme.colors.warning} />,
+  error: <XCircle size={24} color={theme.colors.error} />,
+  info: <Info size={24} color={theme.colors.primary} />,
+};
 
-  const positionInfo = handPositionData[handPosition];
+const styleMap = {
+  success: {
+    backgroundColor: 'rgba(5, 150, 105, 0.1)',
+    borderColor: theme.colors.success,
+  },
+  warning: {
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    borderColor: theme.colors.warning,
+  },
+  error: {
+    backgroundColor: 'rgba(220, 38, 38, 0.1)',
+    borderColor: theme.colors.error,
+  },
+  info: {
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    borderColor: theme.colors.primary,
+  },
+};
+
+export function FeedbackCard({ message, type }: FeedbackCardProps) {
+  const cardStyle = styleMap[type] || styleMap.info;
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Real-Time Feedback</Text>
-
-      {/* Hand Position */}
-      <View style={[styles.feedbackItem, { backgroundColor: positionInfo.bgColor }]}>
-        <Text style={[styles.icon, { color: positionInfo.color }]}>
-          {positionInfo.icon}
-        </Text>
-        <Text style={[styles.feedbackText, { color: positionInfo.color }]}>
-          {positionInfo.text}
-        </Text>
+    <Animated.View entering={FadeIn} exiting={FadeOut} style={[styles.container, cardStyle]}>
+      <View style={styles.iconContainer}>
+        {iconMap[type] || iconMap.info}
       </View>
-
-      {/* Recoil */}
-      <View
-        style={[
-          styles.feedbackItem,
-          {
-            backgroundColor: recoilComplete
-              ? theme.colors.success + '15'
-              : theme.colors.destructive + '15',
-          },
-        ]}
-      >
-        <Text
-          style={[
-            styles.icon,
-            { color: recoilComplete ? theme.colors.success : theme.colors.destructive },
-          ]}
-        >
-          {recoilComplete ? '✓' : '⚠'}
-        </Text>
-        <Text
-          style={[
-            styles.feedbackText,
-            { color: recoilComplete ? theme.colors.success : theme.colors.destructive },
-          ]}
-        >
-          {recoilComplete ? 'Full Recoil: Complete' : 'Full Recoil: Incomplete'}
-        </Text>
-      </View>
-    </View>
+      <Text style={styles.messageText}>{message}</Text>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: theme.colors.card,
-    borderRadius: theme.borderRadius.lg,
-    padding: 20,
-    ...theme.shadows.sm,
-  },
-  title: {
-    ...theme.typography.h4,
-    color: theme.colors.foreground,
-    marginBottom: 16,
-  },
-  feedbackItem: {
+    minHeight: 64,
+    borderRadius: 16,
+    borderLeftWidth: 4,
+    padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
-    borderRadius: theme.borderRadius.md,
-    marginBottom: 12,
+    gap: 12,
+    ...theme.shadows.sm,
   },
-  icon: {
-    fontSize: 24,
-    marginRight: 12,
-    fontWeight: 'bold',
+  iconContainer: {
+    flexShrink: 0,
   },
-  feedbackText: {
-    ...theme.typography.body,
-    fontWeight: '600',
+  messageText: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '500',
+    color: theme.colors.text.primary,
+    lineHeight: 20,
   },
 });

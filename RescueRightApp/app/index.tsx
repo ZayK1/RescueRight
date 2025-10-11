@@ -14,13 +14,8 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      {/* 3D Vest Animation */}
       <VestAnimation3D onAnimationComplete={handleAnimationComplete} />
-
-      {/* CTA Buttons (fade in after animation) */}
       <HomeButtons visible={showButtons} />
-
-      {/* Dev Bypass Button */}
       <DevBypassButton nextScreen="connect" />
     </View>
   );
