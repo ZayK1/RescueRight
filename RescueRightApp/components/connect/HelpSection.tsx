@@ -11,7 +11,7 @@ export function HelpSection({ onTroubleshooting }: HelpSectionProps) {
     <View style={styles.container}>
       <HelpCircle size={16} color="#9CA3AF" />
       <Text style={styles.helpText}>Can't find your vest?</Text>
-      <TouchableOpacity onPress={onTroubleshooting} className="active:scale-95">
+      <TouchableOpacity onPress={onTroubleshooting} activeOpacity={0.7}>
         <Text style={styles.linkText}>Troubleshooting Guide</Text>
       </TouchableOpacity>
     </View>

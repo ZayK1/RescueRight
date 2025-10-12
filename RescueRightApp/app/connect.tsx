@@ -59,7 +59,6 @@ export default function ConnectScreen() {
       </ScrollView>
       <ConnectingModal
         isVisible={isConnecting}
-        deviceName={mockDevices.find(d => d.id === selectedDevice)?.name}
         onCancel={handleConnectionCancel}
         onSuccess={handleConnectionSuccess}
       />
@@ -69,10 +68,10 @@ export default function ConnectScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFFFF' },
-  scrollContent: { paddingTop: 112, paddingBottom: 34 },
-  heroSection: { alignItems: 'center', paddingHorizontal: 20, paddingBottom: 32 },
-  title: { ...theme.typography.h2, textAlign: 'center', marginTop: 24, marginBottom: 8 },
-  subtitle: { ...theme.typography.caption, textAlign: 'center', color: theme.colors.text.secondary, maxWidth: 300 },
-  connectionSection: { paddingHorizontal: 20, gap: 24 },
+  container: { flex: 1, backgroundColor: theme.colors.background },
+  scrollContent: { paddingTop: 112, paddingBottom: 40 },
+  heroSection: { alignItems: 'center', paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xl },
+  title: { ...theme.typography.h2, textAlign: 'center', marginTop: theme.spacing.lg, marginBottom: theme.spacing.sm },
+  subtitle: { ...theme.typography.caption, textAlign: 'center', color: theme.colors.text.secondary, maxWidth: 320 },
+  connectionSection: { paddingHorizontal: theme.spacing.lg, gap: theme.spacing.lg },
 });

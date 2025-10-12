@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, StatusBar } from 'react-native';
 import { VestAnimation3D } from '../components/home/VestAnimation3D';
 import { HomeButtons } from '../components/home/HomeButtons';
 import { DevBypassButton } from '../components/shared/DevBypassButton';
-import { theme } from '../styles/theme';
 
 export default function HomeScreen() {
   const [showButtons, setShowButtons] = useState(false);
@@ -14,8 +13,17 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      <VestAnimation3D onAnimationComplete={handleAnimationComplete} />
+      <StatusBar barStyle="dark-content" />
+
+      {/* 3D Vest */}
+      <View style={styles.vestContainer}>
+        <VestAnimation3D onAnimationComplete={handleAnimationComplete} />
+      </View>
+
+      {/* Buttons at bottom */}
       <HomeButtons visible={showButtons} />
+
+      {/* Dev Bypass */}
       <DevBypassButton nextScreen="connect" />
     </View>
   );
@@ -24,6 +32,11 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: '#F5F7FA', // Clinical soft white from medical theme
+  },
+  vestContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

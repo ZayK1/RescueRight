@@ -15,7 +15,11 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.rescueright.app"
+      "bundleIdentifier": "com.rescueright.app",
+      "infoPlist": {
+        "NSBluetoothAlwaysUsageDescription": "RescueRight needs Bluetooth to connect to the smart training vest for real-time feedback.",
+        "NSBluetoothPeripheralUsageDescription": "RescueRight needs Bluetooth to connect to the smart training vest for real-time feedback."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -24,7 +28,16 @@
       },
       "package": "com.rescueright.app",
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "BLUETOOTH",
+        "BLUETOOTH_ADMIN",
+        "BLUETOOTH_SCAN",
+        "BLUETOOTH_CONNECT",
+        "BLUETOOTH_ADVERTISE",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"

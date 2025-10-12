@@ -22,12 +22,13 @@ export default function AnalyticsScreen() {
     totalThrusts: mockSessionSummary.totalCompressions,
     effectiveThrusts: Math.round(mockSessionSummary.totalCompressions * (mockSessionSummary.correctTechnique / 100)),
     averageForce: mockSessionSummary.averageDepth,
-    forceConsistency: 85, // Placeholder
+    forceConsistency: 88, // Consistency metric
     positionAccuracy: mockSessionSummary.correctTechnique,
-    angleAccuracy: 88, // Placeholder
-    feedback: [ // Create some mock feedback
-      { type: 'success', message: 'Excellent compression depth', detail: `Maintained an average of ${mockSessionSummary.averageDepth}mm.` },
-      { type: 'warning', message: 'Compression rate slightly fast', detail: `Average rate was ${mockSessionSummary.averageRate} CPM.` },
+    angleAccuracy: 92, // Angle accuracy
+    feedback: [ // Create feedback for Heimlich technique
+      { type: 'success' as const, message: 'Optimal thrust force', detail: `Maintained an average of ${mockSessionSummary.averageDepth}N with excellent control.` },
+      { type: 'success' as const, message: 'Perfect hand positioning', detail: `Consistently placed hands above navel, below ribcage.` },
+      { type: 'warning' as const, message: 'Thrust rhythm slightly fast', detail: `Average rate was ${mockSessionSummary.averageRate} thrusts/min. Aim for more controlled rhythm.` },
     ]
   };
 
@@ -59,14 +60,14 @@ export default function AnalyticsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F9FAFB' },
-  content: { paddingTop: 120, paddingBottom: 40, paddingHorizontal: 24, gap: 32 },
-  section: { gap: 16 },
-  sectionTitle: { ...theme.typography.h3 },
-  actions: { gap: 12, marginTop: 16 },
-  button: { height: 56, borderRadius: theme.borderRadius.md, justifyContent: 'center', alignItems: 'center' },
-  primaryButton: { backgroundColor: theme.colors.primary, ...theme.shadows.md },
-  primaryButtonText: { ...theme.typography.body, fontWeight: '600', color: '#FFFFFF' },
-  secondaryButton: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E5E7EB', ...theme.shadows.sm },
-  secondaryButtonText: { ...theme.typography.body, fontWeight: '600', color: theme.colors.primary },
+  container: { flex: 1, backgroundColor: theme.colors.background },
+  content: { paddingTop: 120, paddingBottom: 40, paddingHorizontal: theme.spacing.lg, gap: theme.spacing.xl },
+  section: { gap: theme.spacing.md },
+  sectionTitle: { ...theme.typography.h3, color: theme.colors.text.primary },
+  actions: { gap: theme.spacing.md, marginTop: theme.spacing.md },
+  button: { height: 60, borderRadius: theme.borderRadius.lg, justifyContent: 'center', alignItems: 'center' },
+  primaryButton: { backgroundColor: theme.colors.primary, ...theme.shadows.lg },
+  primaryButtonText: { ...theme.typography.bodySemibold, color: theme.colors.text.inverse },
+  secondaryButton: { backgroundColor: theme.colors.surface, borderWidth: 2, borderColor: theme.colors.borderLight, ...theme.shadows.sm },
+  secondaryButtonText: { ...theme.typography.bodySemibold, color: theme.colors.primary },
 });

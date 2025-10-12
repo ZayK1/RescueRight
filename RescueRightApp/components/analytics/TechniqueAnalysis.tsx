@@ -42,41 +42,41 @@ export function TechniqueAnalysis({ feedback }: TechniqueAnalysisProps) {
 
 const styles = StyleSheet.create({
   container: {
-    gap: 12,
+    gap: theme.spacing.md,
   },
   card: {
-    borderRadius: 16,
-    padding: 16,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.md,
     flexDirection: 'row',
     alignItems: 'flex-start',
-    borderWidth: 1,
+    borderWidth: 1.5,
+    borderLeftWidth: 4,
     ...theme.shadows.sm,
   },
   successContainer: {
-    backgroundColor: 'rgba(5, 150, 105, 0.05)',
-    borderColor: 'rgba(5, 150, 105, 0.2)',
+    backgroundColor: `${theme.colors.success}08`,
+    borderColor: theme.colors.success,
   },
   warningContainer: {
-    backgroundColor: 'rgba(245, 158, 11, 0.05)',
-    borderColor: 'rgba(245, 158, 11, 0.2)',
+    backgroundColor: `${theme.colors.warning}08`,
+    borderColor: theme.colors.warning,
   },
   iconContainer: {
-    marginRight: 12,
+    marginRight: theme.spacing.md,
     marginTop: 2,
   },
   textContainer: {
     flex: 1,
   },
   message: {
-    fontSize: 16,
-    fontWeight: '600',
+    ...theme.typography.bodySemibold,
     color: theme.colors.text.primary,
     marginBottom: 4,
   },
   detail: {
-    fontSize: 14,
+    ...theme.typography.caption,
     color: theme.colors.text.secondary,
-    lineHeight: 20,
   },
   successText: {
     color: theme.colors.success,

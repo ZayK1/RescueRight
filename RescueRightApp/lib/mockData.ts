@@ -11,18 +11,18 @@ export interface BluetoothDevice {
 }
 
 export interface TrainingMetrics {
-  compressionDepth: number; // mm
-  compressionRate: number; // compressions per minute
+  compressionDepth: number; // Force in Newtons for Heimlich thrusts
+  compressionRate: number; // Thrusts per minute
   handPosition: 'correct' | 'too-high' | 'too-low';
-  recoilComplete: boolean;
+  recoilComplete: boolean; // Complete release between thrusts
   timestamp: number;
 }
 
 export interface SessionSummary {
   duration: number; // seconds
-  totalCompressions: number;
-  averageDepth: number; // mm
-  averageRate: number; // CPM
+  totalCompressions: number; // Total abdominal thrusts
+  averageDepth: number; // Average force (N)
+  averageRate: number; // Thrusts per minute
   correctTechnique: number; // percentage
   score: number; // 0-100
 }
@@ -49,10 +49,10 @@ export const mockDevices: BluetoothDevice[] = [
   },
 ];
 
-// Mock real-time training data
+// Mock real-time training data for Heimlich maneuver
 export const mockTrainingData: TrainingMetrics = {
-  compressionDepth: 52, // Target: 50-60mm
-  compressionRate: 105, // Target: 100-120 CPM
+  compressionDepth: 95, // Target: 80-120N for abdominal thrusts
+  compressionRate: 105, // Target: 90-120 thrusts per minute
   handPosition: 'correct',
   recoilComplete: true,
   timestamp: Date.now(),
@@ -60,27 +60,27 @@ export const mockTrainingData: TrainingMetrics = {
 
 // Mock session summary for Analytics screen
 export const mockSessionSummary: SessionSummary = {
-  duration: 180, // 3 minutes
-  totalCompressions: 315,
-  averageDepth: 54,
-  averageRate: 105,
-  correctTechnique: 87,
-  score: 92,
+  duration: 125, // 2 minutes 5 seconds - typical for clearing airway
+  totalCompressions: 218, // Total abdominal thrusts
+  averageDepth: 98, // Average force in Newtons
+  averageRate: 105, // Thrusts per minute
+  correctTechnique: 91, // percentage of correct technique
+  score: 91, // Overall score
 };
 
-// Simulate real-time sensor updates
+// Simulate real-time sensor updates for Heimlich maneuver
 export function generateRandomMetrics(): TrainingMetrics {
-  const depth = 40 + Math.random() * 30; // 40-70mm
-  const rate = 90 + Math.random() * 40; // 90-130 CPM
+  const force = 60 + Math.random() * 60; // 60-120N (Heimlich force range)
+  const rate = 90 + Math.random() * 40; // 90-130 thrusts per minute
 
   let handPosition: 'correct' | 'too-high' | 'too-low';
   const rand = Math.random();
-  if (rand > 0.7) handPosition = 'too-high';
-  else if (rand < 0.15) handPosition = 'too-low';
-  else handPosition = 'correct';
+  if (rand > 0.7) handPosition = 'too-high'; // Above ribcage
+  else if (rand < 0.15) handPosition = 'too-low'; // Below navel
+  else handPosition = 'correct'; // Just above navel, below ribcage
 
   return {
-    compressionDepth: Math.round(depth),
+    compressionDepth: Math.round(force),
     compressionRate: Math.round(rate),
     handPosition,
     recoilComplete: Math.random() > 0.2,

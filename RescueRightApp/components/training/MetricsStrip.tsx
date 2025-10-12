@@ -8,7 +8,7 @@ interface MetricsStripProps {
   accuracy: number; // Will be compression rate
 }
 
-const MetricItem = ({ label, value, unit }) => (
+const MetricItem = ({ label, value, unit }: { label: string; value: number; unit: string }) => (
   <View style={styles.metricItem}>
     <Text style={styles.metricLabel}>{label}</Text>
     <Text style={styles.metricValue}>
@@ -22,11 +22,11 @@ export function MetricsStrip({ thrusts, avgForce, accuracy }: MetricsStripProps)
   return (
     <View style={styles.container}>
       <View style={styles.strip}>
-        <MetricItem label="Compressions" value={thrusts} unit="" />
+        <MetricItem label="Thrusts" value={thrusts} unit="" />
         <View style={styles.separator} />
-        <MetricItem label="Avg. Depth" value={avgForce} unit="mm" />
+        <MetricItem label="Avg. Force" value={Math.round(avgForce)} unit="N" />
         <View style={styles.separator} />
-        <MetricItem label="Rate" value={accuracy} unit="CPM" />
+        <MetricItem label="Rate" value={Math.round(accuracy)} unit="TPM" />
       </View>
       <View style={styles.safeAreaSpacer} />
     </View>
@@ -42,16 +42,16 @@ const styles = StyleSheet.create({
     zIndex: 40,
   },
   strip: {
-    marginHorizontal: 16,
-    height: 64,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: 32,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.08)',
+    marginHorizontal: theme.spacing.md,
+    height: 72,
+    backgroundColor: theme.colors.surface,
+    borderRadius: 36,
+    borderWidth: 1.5,
+    borderColor: theme.colors.borderLight,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
-    ...theme.shadows.lg,
+    ...theme.shadows.xl,
   },
   metricItem: {
     alignItems: 'center',
@@ -59,23 +59,22 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   metricLabel: {
-    fontSize: 12,
-    color: theme.colors.text.secondary,
+    ...theme.typography.micro,
+    color: theme.colors.text.tertiary,
+    marginBottom: 2,
   },
   metricValue: {
-    fontSize: 18,
-    fontWeight: '600',
+    ...theme.typography.h4,
     color: theme.colors.text.primary,
   },
   metricUnit: {
-    fontSize: 12,
-    fontWeight: '400',
-    color: theme.colors.text.secondary,
+    ...theme.typography.caption2,
+    color: theme.colors.text.tertiary,
   },
   separator: {
-    width: 1,
+    width: 1.5,
     height: '50%',
-    backgroundColor: '#E5E7EB',
+    backgroundColor: theme.colors.border,
   },
   safeAreaSpacer: {
     height: 34, // Standard safe area bottom inset

@@ -1,58 +1,65 @@
-import React, { useRef, Suspense } from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
-import { Canvas, useFrame } from '@react-three/fiber/native';
-import * as THREE from 'three';
-
-function Box(props) {
-  const mesh = useRef<THREE.Mesh>(null!);
-  useFrame((state, delta) => {
-    if(mesh.current){
-      mesh.current.rotation.x += delta;
-      mesh.current.rotation.y += delta;
-    }
-  });
-  return (
-    <mesh {...props} ref={mesh}>
-      <boxGeometry args={[1, 1, 1]} />
-      <meshStandardMaterial color={"orange"} />
-    </mesh>
-  );
-}
-
-// Main 3D Canvas Component
-import { useEffect } from 'react';
+import React, { useEffect } from 'react';
+import { View, Image, StyleSheet } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withSpring,
+  withRepeat,
+  withSequence,
+} from 'react-native-reanimated';
 
 export function VestAnimation3D({ onAnimationComplete }: { onAnimationComplete?: () => void }) {
+  const opacity = useSharedValue(0);
+  const scale = useSharedValue(0.7);
+  const rotateZ = useSharedValue(0);
+
   useEffect(() => {
+    // Fade in
+    opacity.value = withTiming(1, { duration: 1000 });
+
+    // Scale up with bounce
+    scale.value = withSpring(1, {
+      damping: 10,
+      stiffness: 80,
+    });
+
+    // Gentle continuous rotation
+    rotateZ.value = withRepeat(
+      withSequence(
+        withTiming(3, { duration: 2000 }),
+        withTiming(-3, { duration: 2000 })
+      ),
+      -1, // infinite
+      true // reverse
+    );
+
+    // Trigger callback
     if (onAnimationComplete) {
       const timer = setTimeout(() => {
         onAnimationComplete();
-      }, 1000); // Simulate a 1-second animation
+      }, 3000);
       return () => clearTimeout(timer);
     }
   }, [onAnimationComplete]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [
+      { scale: scale.value },
+      { rotateZ: `${rotateZ.value}deg` },
+    ],
+  }));
+
   return (
     <View style={styles.container}>
-      <Canvas
-        camera={{ position: [0, 0, 5], fov: 35 }}
-        gl={{ antialias: true, alpha: true }}
-      >
-        {/* Lighting Setup (3-point lighting) */}
-        <ambientLight intensity={0.4} />
-        <directionalLight position={[5, 5, 5]} intensity={1.5} castShadow />
-        <pointLight position={[-5, -5, -5]} intensity={0.6} />
-        <spotLight
-          position={[0, 10, -5]}
-          angle={0.3}
-          intensity={1.0}
-          color={"#f0f8ff"}
+      <Animated.View style={[styles.imageContainer, animatedStyle]}>
+        <Image
+          source={require('../../assets/vest.png')}
+          style={styles.vestImage}
+          resizeMode="contain"
         />
-
-        {/* 3D Model with Loading Fallback */}
-        <Suspense fallback={null}>
-          <Box />
-        </Suspense>
-      </Canvas>
+      </Animated.View>
     </View>
   );
 }
@@ -61,6 +68,18 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     width: '100%',
-    height: '70%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+  },
+  imageContainer: {
+    width: '75%',
+    height: '75%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  vestImage: {
+    width: '100%',
+    height: '100%',
   },
 });

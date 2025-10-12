@@ -50,14 +50,14 @@ const styles = StyleSheet.create({
     height: 59, // Safe area
   },
   headerPill: {
-    height: 56,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    borderRadius: 28,
+    height: 60,
+    backgroundColor: theme.colors.text.primary,
+    borderRadius: 30,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    ...theme.shadows.lg,
+    paddingHorizontal: 14,
+    ...theme.shadows.xl,
   },
   connectionStatus: {
     flexDirection: 'row',
@@ -68,14 +68,13 @@ const styles = StyleSheet.create({
     borderRadius: 14,
   },
   connected: {
-    backgroundColor: 'rgba(5, 150, 105, 0.2)',
+    backgroundColor: `${theme.colors.success}30`,
   },
   disconnected: {
-    backgroundColor: 'rgba(220, 38, 38, 0.2)',
+    backgroundColor: `${theme.colors.error}30`,
   },
   connectionText: {
-    fontSize: 12,
-    fontWeight: '500',
+    ...theme.typography.micro,
   },
   connectedText: {
     color: theme.colors.success,
@@ -84,9 +83,8 @@ const styles = StyleSheet.create({
     color: theme.colors.error,
   },
   title: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '600',
+    ...theme.typography.h4,
+    color: theme.colors.text.inverse,
   },
   infoButton: {
     width: 32,

@@ -20,20 +20,20 @@ const iconMap = {
 
 const styleMap = {
   success: {
-    backgroundColor: 'rgba(5, 150, 105, 0.1)',
+    backgroundColor: `${theme.colors.success}12`,
     borderColor: theme.colors.success,
   },
   warning: {
-    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    backgroundColor: `${theme.colors.warning}12`,
     borderColor: theme.colors.warning,
   },
   error: {
-    backgroundColor: 'rgba(220, 38, 38, 0.1)',
+    backgroundColor: `${theme.colors.error}12`,
     borderColor: theme.colors.error,
   },
   info: {
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-    borderColor: theme.colors.primary,
+    backgroundColor: `${theme.colors.info}12`,
+    borderColor: theme.colors.info,
   },
 };
 
@@ -52,23 +52,23 @@ export function FeedbackCard({ message, type }: FeedbackCardProps) {
 
 const styles = StyleSheet.create({
   container: {
-    minHeight: 64,
-    borderRadius: 16,
-    borderLeftWidth: 4,
-    padding: 16,
+    minHeight: 72,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    borderLeftWidth: 5,
+    padding: theme.spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    ...theme.shadows.sm,
+    gap: theme.spacing.md,
+    ...theme.shadows.md,
   },
   iconContainer: {
     flexShrink: 0,
   },
   messageText: {
     flex: 1,
-    fontSize: 15,
-    fontWeight: '500',
+    ...theme.typography.caption,
+    fontWeight: '600',
     color: theme.colors.text.primary,
-    lineHeight: 20,
   },
 });

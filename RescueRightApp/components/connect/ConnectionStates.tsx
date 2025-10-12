@@ -2,19 +2,19 @@ import { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Bluetooth, Check, ChevronRight } from 'lucide-react-native';
 import { theme } from '../../styles/theme';
-import { mockDevices, MockDevice } from '../../lib/mockData'; // Using mock data as per the roadmap
+import { BluetoothDevice } from '../../lib/mockData'; // Using mock data as per the roadmap
 
 interface ConnectionStatesProps {
-  devices: MockDevice[];
+  devices: BluetoothDevice[];
   onDeviceSelect: (deviceId: string) => void;
 }
 
-const DeviceItem = ({ device, onDeviceSelect, isSelected }: { device: MockDevice, onDeviceSelect: (id: string) => void, isSelected: boolean }) => {
+const DeviceItem = ({ device, onDeviceSelect, isSelected }: { device: BluetoothDevice, onDeviceSelect: (id: string) => void, isSelected: boolean }) => {
   return (
     <TouchableOpacity
       style={[styles.deviceCard, isSelected && styles.selectedCard]}
       onPress={() => onDeviceSelect(device.id)}
-      className="active:scale-[0.99]"
+      activeOpacity={0.8}
     >
       <View style={styles.cardContent}>
         <View style={styles.btIconContainer}>
@@ -97,7 +97,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   scanningText: {
-    fontSize: 15,
+    ...theme.typography.caption,
     color: theme.colors.text.secondary,
   },
   listContainer: {
@@ -108,16 +108,17 @@ const styles = StyleSheet.create({
   },
   deviceCard: {
     height: 88,
-    borderRadius: 16,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.08)',
-    paddingHorizontal: 20,
+    borderRadius: theme.borderRadius.lg,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1.5,
+    borderColor: theme.colors.border,
+    paddingHorizontal: theme.spacing.lg,
     justifyContent: 'center',
     ...theme.shadows.sm,
   },
   selectedCard: {
-    borderColor: 'rgba(59, 130, 246, 0.3)',
+    borderColor: theme.colors.primary,
+    borderWidth: 2,
     ...theme.shadows.md,
   },
   cardContent: {
@@ -125,23 +126,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   btIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: `${theme.colors.primary}15`,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 16,
+    marginRight: theme.spacing.md,
   },
   deviceName: {
-    fontSize: 17,
-    fontWeight: '600',
+    ...theme.typography.bodySemibold,
     color: theme.colors.text.primary,
     marginBottom: 2,
   },
   deviceRssi: {
-    fontSize: 13,
-    color: theme.colors.text.secondary,
+    ...theme.typography.caption2,
+    color: theme.colors.text.tertiary,
   },
   checkIconContainer: {
     width: 28,

@@ -20,7 +20,7 @@ export function ManualPairing({ onManualPairing }: ManualPairingProps) {
       <TouchableOpacity
         onPress={onManualPairing}
         style={styles.button}
-        className="active:scale-[0.99]"
+        activeOpacity={0.7}
       >
         <Search size={20} strokeWidth={2.5} color={theme.colors.primary} />
         <Text style={styles.buttonText}>Enter Pairing Code Manually</Text>

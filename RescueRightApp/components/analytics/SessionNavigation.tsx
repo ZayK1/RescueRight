@@ -13,7 +13,7 @@ export function SessionNavigation({ onBack, onMore }: SessionNavigationProps) {
     <View style={styles.container}>
       <View style={styles.statusBarSpacer} />
       <View style={styles.navBar}>
-        <TouchableOpacity onPress={onBack} style={styles.button} className="active:scale-95">
+        <TouchableOpacity onPress={onBack} style={styles.button} activeOpacity={0.7}>
           <ChevronLeft size={18} strokeWidth={2.5} color={theme.colors.text.primary} />
         </TouchableOpacity>
 
@@ -25,7 +25,7 @@ export function SessionNavigation({ onBack, onMore }: SessionNavigationProps) {
           </View>
         </View>
 
-        <TouchableOpacity onPress={onMore} style={styles.button} className="active:scale-95">
+        <TouchableOpacity onPress={onMore} style={styles.button} activeOpacity={0.7}>
           <MoreHorizontal size={16} strokeWidth={2.5} color={theme.colors.text.primary} />
         </TouchableOpacity>
       </View>

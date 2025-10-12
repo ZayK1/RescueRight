@@ -37,8 +37,8 @@ export function HeroSuccessCard({ score, duration }: HeroSuccessCardProps) {
         </View>
       </View>
 
-      <Text style={styles.title}>Exceptional Performance</Text>
-      <Text style={styles.subtitle}>CPR technique validated successfully</Text>
+      <Text style={styles.title}>Excellent Technique</Text>
+      <Text style={styles.subtitle}>Heimlich maneuver performed with precision</Text>
 
       <View style={styles.scoreContainer}>
         <Svg width="128" height="128" viewBox="0 0 128 128">
@@ -77,21 +77,23 @@ export function HeroSuccessCard({ score, duration }: HeroSuccessCardProps) {
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 24,
-    backgroundColor: '#FFFFFF',
-    padding: 24,
+    borderRadius: theme.borderRadius.xxl,
+    backgroundColor: theme.colors.surface,
+    padding: theme.spacing.xl,
     alignItems: 'center',
-    ...theme.shadows.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.borderLight,
+    ...theme.shadows.xl,
   },
   badge: {
-    width: 72,
-    height: 72,
-    borderRadius: 24,
+    width: 80,
+    height: 80,
+    borderRadius: theme.borderRadius.xl,
     backgroundColor: theme.colors.success,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 24,
-    ...theme.shadows.md,
+    marginBottom: theme.spacing.lg,
+    ...theme.shadows.lg,
   },
   award: {
     position: 'absolute',
@@ -105,15 +107,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   title: {
-    fontSize: 24,
-    fontWeight: '700',
+    ...theme.typography.h2,
     color: theme.colors.text.primary,
     marginBottom: 4,
+    textAlign: 'center',
   },
   subtitle: {
-    fontSize: 15,
+    ...theme.typography.caption,
     color: theme.colors.text.secondary,
-    marginBottom: 24,
+    marginBottom: theme.spacing.lg,
+    textAlign: 'center',
   },
   scoreContainer: {
     width: 128,
@@ -127,24 +130,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   scoreText: {
-    fontSize: 36,
-    fontWeight: '800',
+    ...theme.typography.display,
     color: theme.colors.text.primary,
   },
   scoreLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: theme.colors.text.secondary,
-    letterSpacing: 1,
+    ...theme.typography.micro,
+    color: theme.colors.text.tertiary,
   },
   durationContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: theme.spacing.sm,
   },
   durationText: {
-    fontSize: 13,
-    fontWeight: '500',
+    ...theme.typography.caption2,
     color: theme.colors.text.secondary,
   },
 });

@@ -14,7 +14,7 @@ export function PairingNavigation({ onBack, onHelp }: PairingNavigationProps) {
         {/* Back Button */}
         <TouchableOpacity
           onPress={onBack}
-          className="active:scale-95"
+          activeOpacity={0.7}
         >
           <Text style={styles.buttonText}>Cancel</Text>
         </TouchableOpacity>
@@ -25,7 +25,8 @@ export function PairingNavigation({ onBack, onHelp }: PairingNavigationProps) {
         {/* Help Button */}
         <TouchableOpacity
           onPress={onHelp}
-          className="w-11 h-11 flex items-center justify-center active:scale-95"
+          style={styles.helpButton}
+          activeOpacity={0.7}
         >
           <HelpCircle size={24} strokeWidth={1.5} color={theme.colors.primary} />
         </TouchableOpacity>
@@ -57,5 +58,11 @@ const styles = StyleSheet.create({
   buttonText: {
     color: theme.colors.primary,
     fontSize: 17,
+  },
+  helpButton: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

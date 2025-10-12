@@ -35,7 +35,7 @@ export function useTrainingData(): UseTrainingDataReturn {
 
   useEffect(() => {
     if (isActive) {
-      // Update metrics every 500ms (simulating real-time sensor data)
+      // Update metrics every 500ms (simulating real-time sensor data for Heimlich thrusts)
       metricsIntervalRef.current = setInterval(() => {
         setMetrics(generateRandomMetrics());
       }, 500);
@@ -45,7 +45,7 @@ export function useTrainingData(): UseTrainingDataReturn {
         setDuration((prev) => prev + 1);
       }, 1000);
 
-      // Simulate compressions (avg 1.75 per second = 105 CPM)
+      // Simulate abdominal thrusts (avg 1.75 per second = 105 thrusts/min)
       compressionIntervalRef.current = setInterval(() => {
         setCompressions((prev) => prev + 1);
       }, 570);
