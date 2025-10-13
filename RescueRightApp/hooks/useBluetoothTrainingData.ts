@@ -1,5 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { bluetoothManager, SensorData } from '../lib/bluetooth';
+import {
+  calibrationEngine,
+  RawSensorData,
+  CalibratedSensorData,
+  EMAFilter,
+  MedianFilter,
+  DataQuality,
+} from '../lib/calibration';
 
 export interface TrainingData {
   compressionDepth: number;
@@ -9,11 +17,20 @@ export interface TrainingData {
   feedback: string;
   thrusts: number;
   isConnected: boolean;
+  dataQuality?: DataQuality; // Added quality metrics
+  rawForce?: number; // For debugging
+  filteredForce?: number; // For debugging
 }
 
 /**
  * Custom hook to manage real-time training data from Bluetooth vest
  * Falls back to mock data if not connected
+ *
+ * Now includes:
+ * - Data validation and quality assessment
+ * - Noise filtering (EMA + Median filters)
+ * - Diagnostic logging
+ * - Calibration integration
  */
 export function useBluetoothTrainingData(useMockData: boolean = false) {
   const [data, setData] = useState<TrainingData>({
@@ -31,6 +48,16 @@ export function useBluetoothTrainingData(useMockData: boolean = false) {
   const lastForceRef = useRef(0);
   const forceHistoryRef = useRef<number[]>([]);
   const lastThrustTimeRef = useRef(0);
+
+  // Data filtering
+  const forceFilterRef = useRef(new EMAFilter(0.3)); // Smooth force readings
+  const positionXFilterRef = useRef(new EMAFilter(0.2)); // Smooth position
+  const positionYFilterRef = useRef(new EMAFilter(0.2));
+  const angleFilterRef = useRef(new MedianFilter(5)); // Remove angle outliers
+
+  // Data validation
+  const invalidDataCountRef = useRef(0);
+  const totalDataCountRef = useRef(0);
 
   useEffect(() => {
     if (useMockData) {
@@ -50,15 +77,59 @@ export function useBluetoothTrainingData(useMockData: boolean = false) {
     const subscribeToSensors = async () => {
       try {
         await bluetoothManager.subscribeToAllSensors((sensorData: Partial<SensorData>) => {
+          totalDataCountRef.current += 1;
+
           setData((prev) => {
             const updated = { ...prev };
 
-            // Update force/compression depth
+            // === DATA VALIDATION ===
+            const rawForce = sensorData.force ?? 0;
+            const rawPosition = sensorData.position ?? prev.handPosition;
+            const rawAngle = sensorData.angle ?? prev.angle;
+
+            // Validate data ranges
+            const isValidForce = rawForce >= 0 && rawForce <= 500; // Max 500N
+            const isValidPosition =
+              rawPosition.x >= 0 &&
+              rawPosition.x <= 1 &&
+              rawPosition.y >= 0 &&
+              rawPosition.y <= 1;
+            const isValidAngle = Math.abs(rawAngle) <= 180;
+
+            if (!isValidForce || !isValidPosition || !isValidAngle) {
+              invalidDataCountRef.current += 1;
+
+              // Log validation failures (throttled to every 10th failure)
+              if (invalidDataCountRef.current % 10 === 0) {
+                console.warn('[Data Validation] Invalid data detected:', {
+                  force: rawForce,
+                  position: rawPosition,
+                  angle: rawAngle,
+                  validForce: isValidForce,
+                  validPosition: isValidPosition,
+                  validAngle: isValidAngle,
+                  failureRate: (invalidDataCountRef.current / totalDataCountRef.current).toFixed(2),
+                });
+              }
+
+              // Skip processing invalid data
+              return prev;
+            }
+
+            // === DATA FILTERING ===
+            const filteredForce = forceFilterRef.current.filter(rawForce);
+            const filteredPositionX = positionXFilterRef.current.filter(rawPosition.x);
+            const filteredPositionY = positionYFilterRef.current.filter(rawPosition.y);
+            const filteredAngle = angleFilterRef.current.filter(rawAngle);
+
+            // === UPDATE STATE ===
             if (sensorData.force !== undefined) {
-              updated.compressionDepth = sensorData.force;
+              updated.compressionDepth = filteredForce;
+              updated.rawForce = rawForce; // For debugging
+              updated.filteredForce = filteredForce; // For debugging
 
               // Detect thrust (force spike above threshold)
-              if (detectThrust(sensorData.force)) {
+              if (detectThrust(filteredForce)) {
                 thrustsCountRef.current += 1;
                 updated.thrusts = thrustsCountRef.current;
               }
@@ -68,20 +139,42 @@ export function useBluetoothTrainingData(useMockData: boolean = false) {
 
               // Update feedback
               updated.feedback = generateFeedback(
-                sensorData.force,
-                prev.handPosition,
-                prev.angle
+                filteredForce,
+                { x: filteredPositionX, y: filteredPositionY },
+                filteredAngle
               );
             }
 
             // Update hand position
             if (sensorData.position) {
-              updated.handPosition = sensorData.position;
+              updated.handPosition = {
+                x: filteredPositionX,
+                y: filteredPositionY,
+              };
             }
 
             // Update angle
             if (sensorData.angle !== undefined) {
-              updated.angle = sensorData.angle;
+              updated.angle = filteredAngle;
+            }
+
+            // === DIAGNOSTIC LOGGING (every 50 samples) ===
+            if (totalDataCountRef.current % 50 === 0) {
+              console.log('[Sensor Data]', {
+                sampleCount: totalDataCountRef.current,
+                invalidCount: invalidDataCountRef.current,
+                dataQualityRate: (
+                  ((totalDataCountRef.current - invalidDataCountRef.current) /
+                    totalDataCountRef.current) *
+                  100
+                ).toFixed(1) + '%',
+                currentForce: filteredForce.toFixed(1),
+                currentPosition: {
+                  x: filteredPositionX.toFixed(3),
+                  y: filteredPositionY.toFixed(3),
+                },
+                currentAngle: filteredAngle.toFixed(1),
+              });
             }
 
             return updated;
