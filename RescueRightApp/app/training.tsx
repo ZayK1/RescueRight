@@ -45,9 +45,9 @@ export default function TrainingScreen() {
   const feedbackMessage = data.feedback || "Waiting for vest data...";
   const feedbackType = getFeedbackType(feedbackMessage);
 
-  // Define target range for Heimlich thrust force
-  const targetMin = 80; // N (Newtons)
-  const targetMax = 120; // N (Newtons)
+  // Adjusted target range for current calibration (will be refined)
+  const targetMin = 20; // N (Newtons) - adjusted for prototype
+  const targetMax = 60; // N (Newtons) - adjusted for prototype
 
   return (
     <View style={styles.container}>
@@ -65,11 +65,27 @@ export default function TrainingScreen() {
           <Text style={styles.moduleTitle}>Live Feedback</Text>
           <FeedbackCard message={feedbackMessage} type={feedbackType} />
         </View>
+        <View style={styles.module}>
+          <Text style={styles.moduleTitle}>Session Stats</Text>
+          <View style={styles.statsRow}>
+            <View style={styles.statBox}>
+              <Text style={styles.statLabel}>Thrusts</Text>
+              <Text style={styles.statValue}>{data.thrusts}</Text>
+            </View>
+            <View style={styles.statBox}>
+              <Text style={styles.statLabel}>Rate</Text>
+              <Text style={styles.statValue}>{data.compressionRate}/min</Text>
+            </View>
+            <View style={styles.statBox}>
+              <Text style={styles.statLabel}>Peak Force</Text>
+              <Text style={styles.statValue}>{data.compressionDepth.toFixed(0)}N</Text>
+            </View>
+          </View>
+        </View>
         <TouchableOpacity style={styles.completeButton} onPress={handleComplete}>
           <Text style={styles.completeButtonText}>Complete Session</Text>
         </TouchableOpacity>
       </ScrollView>
-      <MetricsStrip thrusts={data.thrusts} avgForce={data.compressionDepth} accuracy={data.compressionRate} />
       <DevBypassButton nextScreen="analytics" />
     </View>
   );
@@ -80,6 +96,29 @@ const styles = StyleSheet.create({
   content: { paddingTop: 135, paddingBottom: 150, paddingHorizontal: theme.spacing.md, gap: theme.spacing.lg },
   module: { gap: theme.spacing.sm },
   moduleTitle: { ...theme.typography.h3, color: theme.colors.text.primary, paddingHorizontal: 4, marginBottom: theme.spacing.sm },
+  statsRow: {
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+    justifyContent: 'space-between',
+  },
+  statBox: {
+    flex: 1,
+    backgroundColor: theme.colors.surface,
+    padding: theme.spacing.md,
+    borderRadius: theme.borderRadius.md,
+    alignItems: 'center',
+    ...theme.shadows.sm,
+  },
+  statLabel: {
+    ...theme.typography.caption,
+    color: theme.colors.text.secondary,
+    marginBottom: 4,
+  },
+  statValue: {
+    ...theme.typography.h2,
+    color: theme.colors.primary,
+    fontWeight: '700',
+  },
   completeButton: { backgroundColor: theme.colors.success, height: 60, borderRadius: theme.borderRadius.lg, justifyContent: 'center', alignItems: 'center', marginTop: theme.spacing.md, ...theme.shadows.lg },
   completeButtonText: { ...theme.typography.bodySemibold, color: theme.colors.text.inverse },
 });

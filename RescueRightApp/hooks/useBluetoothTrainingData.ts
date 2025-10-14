@@ -198,8 +198,8 @@ export function useBluetoothTrainingData(useMockData: boolean = false) {
    * Detect if a thrust occurred based on force spike
    */
   const detectThrust = (currentForce: number): boolean => {
-    const threshold = 60; // Minimum force in Newtons
-    const cooldown = 500; // Minimum time between thrusts (ms)
+    const threshold = 10; // Minimum force in Newtons (lowered for calibration)
+    const cooldown = 400; // Minimum time between thrusts (ms)
 
     const now = Date.now();
     const timeSinceLastThrust = now - lastThrustTimeRef.current;
@@ -212,6 +212,8 @@ export function useBluetoothTrainingData(useMockData: boolean = false) {
     ) {
       lastThrustTimeRef.current = now;
       lastForceRef.current = currentForce;
+      forceHistoryRef.current.push(now); // Track thrust time
+      console.log(`[Thrust Detected] Force: ${currentForce}N at ${new Date(now).toISOString()}`);
       return true;
     }
 
@@ -241,40 +243,47 @@ export function useBluetoothTrainingData(useMockData: boolean = false) {
     position: { x: number; y: number },
     angle: number
   ): string => {
-    const targetForce = { min: 80, max: 120 };
+    // Adjusted thresholds for current calibration
+    const targetForce = { min: 20, max: 60 };
     const targetPosition = { x: 0.5, y: 0.45 };
-    const targetAngle = 0;
 
-    // Check force
+    // No force - waiting for thrust
+    if (force < 5) {
+      return 'Ready to practice - Apply thrust to begin';
+    }
+
+    // Force too low
     if (force < targetForce.min) {
-      return 'Increase pressure - current force too low';
-    }
-    if (force > targetForce.max) {
-      return '⚠️ Reduce pressure - risk of injury!';
+      return `Increase pressure - Current: ${force.toFixed(0)}N (Target: ${targetForce.min}-${targetForce.max}N)`;
     }
 
-    // Check position
+    // Force too high
+    if (force > targetForce.max) {
+      return `⚠️ Reduce pressure - Current: ${force.toFixed(0)}N (Max: ${targetForce.max}N)`;
+    }
+
+    // Check position (more lenient for real-world use)
     const positionError = Math.sqrt(
       Math.pow(position.x - targetPosition.x, 2) + Math.pow(position.y - targetPosition.y, 2)
     );
 
-    if (positionError > 0.1) {
-      const xOffset = (position.x - targetPosition.x) * 100;
-      const yOffset = (position.y - targetPosition.y) * 100;
+    if (positionError > 0.15) {
+      const xOffset = (position.x - targetPosition.x);
+      const yOffset = (position.y - targetPosition.y);
 
       if (Math.abs(xOffset) > Math.abs(yOffset)) {
-        return `Move hands ${Math.abs(xOffset).toFixed(0)}cm ${xOffset > 0 ? 'left' : 'right'}`;
+        const direction = xOffset > 0 ? 'left' : 'right';
+        const cm = Math.abs(xOffset * 20).toFixed(0); // Scale to approximate cm
+        return `Move hands ${cm}cm ${direction}`;
       } else {
-        return `Move hands ${Math.abs(yOffset).toFixed(0)}cm ${yOffset > 0 ? 'down' : 'up'}`;
+        const direction = yOffset > 0 ? 'up' : 'down';
+        const cm = Math.abs(yOffset * 20).toFixed(0);
+        return `Move hands ${cm}cm ${direction}`;
       }
     }
 
-    // Check angle
-    if (Math.abs(angle - targetAngle) > 15) {
-      return `Adjust angle - ${angle > 0 ? 'lean back' : 'lean forward'} slightly`;
-    }
-
-    return '✓ Perfect technique! Maintain this position and pressure.';
+    // Good thrust!
+    return `✓ Good thrust! Force: ${force.toFixed(0)}N - Keep going!`;
   };
 
   /**
