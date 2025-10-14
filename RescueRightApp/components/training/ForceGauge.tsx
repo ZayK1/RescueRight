@@ -1,11 +1,12 @@
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
-import Animated, { useAnimatedProps, useSharedValue, withSpring } from 'react-native-reanimated';
+import Animated, { useAnimatedProps, useSharedValue, withSpring, useAnimatedStyle, interpolate } from 'react-native-reanimated';
 import { Zap, Target } from 'lucide-react-native';
 import { theme } from '../../styles/theme';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+const AnimatedText = Animated.createAnimatedComponent(Text);
 
 const GAUGE_SIZE = 240;
 const STROKE_WIDTH = 24;
@@ -20,18 +21,38 @@ interface ForceGaugeProps {
 
 export function ForceGauge({ force, targetMin, targetMax }: ForceGaugeProps) {
   const progress = useSharedValue(0);
+  const displayForce = useSharedValue(0);
 
   useEffect(() => {
-    const normalizedProgress = Math.min(Math.max(force / 200, 0), 1);
-    progress.value = withSpring(normalizedProgress, {
-      damping: 20,
-      stiffness: 90,
-    });
+    // Force decay mechanism: Hold the value, then slowly decay
+    if (force > 0) {
+      // New force applied - update immediately
+      displayForce.value = force;
+
+      // Update progress with spring animation
+      const normalizedProgress = Math.min(Math.max(force / 200, 0), 1);
+      progress.value = withSpring(normalizedProgress, {
+        damping: 20,
+        stiffness: 90,
+      });
+    } else {
+      // Force is 0 - decay VERY slowly over 3 seconds
+      displayForce.value = withSpring(0, {
+        damping: 100, // Very high damping = very slow
+        stiffness: 5,  // Very low stiffness = slow decay
+      });
+
+      progress.value = withSpring(0, {
+        damping: 100,
+        stiffness: 5,
+      });
+    }
   }, [force]);
 
   const animatedProps = useAnimatedProps(() => {
     const angle = progress.value * 270; // 270 degrees for 3/4 circle
-    const strokeDashoffset = CIRCUMFERENCE - (CIRCUMFERENCE * angle) / 360;
+    // FIX: Reverse the direction by using positive offset
+    const strokeDashoffset = (CIRCUMFERENCE / 8) + (CIRCUMFERENCE * (1 - progress.value) * 270) / 360;
     return { strokeDashoffset };
   });
 
@@ -116,6 +137,13 @@ export function ForceGauge({ force, targetMin, targetMax }: ForceGaugeProps) {
           </View>
         </View>
       </View>
+
+      {/* Tip for calibration */}
+      {force === 0 && (
+        <View style={styles.tipContainer}>
+          <Text style={styles.tipText}>💡 Apply pressure to see real-time force</Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -211,5 +239,19 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+  },
+  tipContainer: {
+    marginTop: 16,
+    padding: 12,
+    backgroundColor: 'rgba(99, 102, 241, 0.06)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(99, 102, 241, 0.1)',
+  },
+  tipText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: theme.colors.text.secondary,
+    textAlign: 'center',
   },
 });
