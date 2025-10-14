@@ -5,14 +5,14 @@ import { StatusHeader } from '../components/training/StatusHeader';
 import { HeatmapModule } from '../components/training/HeatmapModule';
 import { ForceGauge } from '../components/training/ForceGauge';
 import { FeedbackCard } from '../components/training/FeedbackCard';
-import { MetricsStrip } from '../components/training/MetricsStrip';
 import { DevBypassButton } from '../components/shared/DevBypassButton';
 import { useBluetoothTrainingData } from '../hooks/useBluetoothTrainingData';
+import { sessionStorage } from '../lib/sessionStorage';
 import { theme } from '../styles/theme';
 
 const getFeedbackType = (feedback: string): 'success' | 'info' | 'error' => {
-  if (feedback.startsWith("Excellent")) return 'success';
-  if (feedback.includes("Too forceful") || feedback.includes("Too fast") || feedback.includes("Risk of injury")) return 'error';
+  if (feedback.includes('Good thrust') || feedback.includes('Perfect')) return 'success';
+  if (feedback.includes('Reduce pressure') || feedback.includes('Risk of injury')) return 'error';
   return 'info';
 };
 
@@ -39,6 +39,9 @@ export default function TrainingScreen() {
   };
 
   const handleComplete = () => {
+    // End session and save data
+    const sessionData = sessionStorage.endSession();
+    console.log('[Training] Session completed:', sessionData);
     router.push('/analytics');
   };
 

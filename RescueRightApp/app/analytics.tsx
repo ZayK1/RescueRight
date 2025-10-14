@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SessionNavigation } from '../components/analytics/SessionNavigation';
@@ -6,29 +6,170 @@ import { HeroSuccessCard } from '../components/analytics/HeroSuccessCard';
 import { MetricsGrid } from '../components/analytics/MetricsGrid';
 import { TechniqueAnalysis } from '../components/analytics/TechniqueAnalysis';
 import { DevBypassButton } from '../components/shared/DevBypassButton';
-import { mockSessionSummary } from '../lib/mockData';
+import { sessionStorage, SessionData } from '../lib/sessionStorage';
 import { theme } from '../styles/theme';
 
 export default function AnalyticsScreen() {
   const router = useRouter();
+  const [sessionData, setSessionData] = useState<SessionData | null>(null);
+
+  useEffect(() => {
+    // Get the most recent session data
+    const session = sessionStorage.getCurrentSession();
+    if (session && session.totalThrusts !== undefined) {
+      // Convert to SessionData
+      setSessionData({
+        id: session.id!,
+        startTime: session.startTime!,
+        endTime: Date.now(),
+        duration: Math.floor((Date.now() - session.startTime!) / 1000),
+        totalThrusts: session.totalThrusts!,
+        averageForce: session.averageForce!,
+        maxForce: session.maxForce!,
+        averageRate: session.averageRate!,
+        thrustHistory: session.thrustHistory!,
+        positionAccuracy: session.positionAccuracy!,
+      });
+    }
+  }, []);
+
   const handleNewSession = () => { router.push('/connect'); };
   const handleViewHistory = () => { console.log('View history'); };
   const handleDone = () => { router.push('/'); };
 
-  const analyticsData = {
-    overallScore: mockSessionSummary.score,
-    duration: mockSessionSummary.duration,
-    totalThrusts: mockSessionSummary.totalCompressions,
-    effectiveThrusts: Math.round(mockSessionSummary.totalCompressions * (mockSessionSummary.correctTechnique / 100)),
-    averageForce: mockSessionSummary.averageDepth,
-    forceConsistency: 88,
-    positionAccuracy: mockSessionSummary.correctTechnique,
-    angleAccuracy: 92,
-    feedback: [
-      { type: 'success' as const, message: 'Optimal thrust force', detail: `Maintained an average of ${mockSessionSummary.averageDepth}N with excellent control.` },
-      { type: 'success' as const, message: 'Perfect hand positioning', detail: `Consistently placed hands above navel, below ribcage.` },
-      { type: 'warning' as const, message: 'Thrust rhythm slightly fast', detail: `Average rate was ${mockSessionSummary.averageRate} thrusts/min. Aim for more controlled rhythm.` },
-    ]
+  // Calculate score based on real data
+  const calculateScore = (): number => {
+    if (!sessionData) return 0;
+
+    let score = 0;
+
+    // Force quality (40 points)
+    const targetForce = { min: 20, max: 60 };
+    if (sessionData.averageForce >= targetForce.min && sessionData.averageForce <= targetForce.max) {
+      score += 40;
+    } else if (sessionData.averageForce > 0) {
+      const deviation = sessionData.averageForce < targetForce.min
+        ? (targetForce.min - sessionData.averageForce) / targetForce.min
+        : (sessionData.averageForce - targetForce.max) / targetForce.max;
+      score += Math.max(0, 40 - deviation * 40);
+    }
+
+    // Position accuracy (30 points)
+    score += (sessionData.positionAccuracy / 100) * 30;
+
+    // Rate consistency (20 points) - ideal rate is around 5 thrusts/min
+    const targetRate = 5;
+    const rateDeviation = Math.abs(sessionData.averageRate - targetRate);
+    const rateScore = Math.max(0, 20 - rateDeviation * 2);
+    score += rateScore;
+
+    // Completion (10 points) - at least 3 thrusts
+    if (sessionData.totalThrusts >= 3) {
+      score += 10;
+    } else {
+      score += (sessionData.totalThrusts / 3) * 10;
+    }
+
+    return Math.round(Math.min(100, score));
+  };
+
+  const formatDuration = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+  };
+
+  const generateFeedback = () => {
+    if (!sessionData) return [];
+
+    const feedback: Array<{ type: 'success' | 'warning' | 'error'; message: string; detail: string }> = [];
+
+    // Force feedback
+    const targetForce = { min: 20, max: 60 };
+    if (sessionData.averageForce >= targetForce.min && sessionData.averageForce <= targetForce.max) {
+      feedback.push({
+        type: 'success',
+        message: 'Excellent force control',
+        detail: `Average force of ${sessionData.averageForce.toFixed(1)}N is within optimal range (${targetForce.min}-${targetForce.max}N).`
+      });
+    } else if (sessionData.averageForce < targetForce.min && sessionData.averageForce > 0) {
+      feedback.push({
+        type: 'warning',
+        message: 'Increase thrust force',
+        detail: `Average force was ${sessionData.averageForce.toFixed(1)}N. Target range is ${targetForce.min}-${targetForce.max}N for effective thrusts.`
+      });
+    } else if (sessionData.averageForce > targetForce.max) {
+      feedback.push({
+        type: 'warning',
+        message: 'Reduce excessive force',
+        detail: `Average force was ${sessionData.averageForce.toFixed(1)}N. Stay within ${targetForce.min}-${targetForce.max}N to avoid injury risk.`
+      });
+    }
+
+    // Position feedback
+    if (sessionData.positionAccuracy >= 80) {
+      feedback.push({
+        type: 'success',
+        message: 'Excellent hand positioning',
+        detail: `${sessionData.positionAccuracy}% of thrusts were in the optimal zone. Great consistency!`
+      });
+    } else if (sessionData.positionAccuracy >= 60) {
+      feedback.push({
+        type: 'warning',
+        message: 'Improve hand positioning',
+        detail: `${sessionData.positionAccuracy}% accuracy. Focus on placing hands in the center of the target area.`
+      });
+    } else {
+      feedback.push({
+        type: 'error',
+        message: 'Hand position needs attention',
+        detail: `Only ${sessionData.positionAccuracy}% accuracy. Review proper hand placement technique.`
+      });
+    }
+
+    // Rate feedback
+    const targetRate = 5;
+    if (sessionData.averageRate >= targetRate - 2 && sessionData.averageRate <= targetRate + 2) {
+      feedback.push({
+        type: 'success',
+        message: 'Good rhythm maintained',
+        detail: `Average rate of ${sessionData.averageRate} thrusts/min is appropriate for Heimlich maneuver.`
+      });
+    } else if (sessionData.averageRate > targetRate + 2) {
+      feedback.push({
+        type: 'warning',
+        message: 'Slow down your rhythm',
+        detail: `Rate of ${sessionData.averageRate} thrusts/min is too fast. Aim for controlled, deliberate thrusts.`
+      });
+    }
+
+    return feedback;
+  };
+
+  const analyticsData = sessionData ? {
+    overallScore: calculateScore(),
+    duration: formatDuration(sessionData.duration),
+    totalThrusts: sessionData.totalThrusts,
+    effectiveThrusts: Math.round(sessionData.totalThrusts * (sessionData.positionAccuracy / 100)),
+    averageForce: parseFloat(sessionData.averageForce.toFixed(1)),
+    forceConsistency: 85, // Placeholder - could calculate from thrustHistory
+    positionAccuracy: sessionData.positionAccuracy,
+    angleAccuracy: 90, // Placeholder - could calculate from thrustHistory
+    feedback: generateFeedback()
+  } : {
+    overallScore: 0,
+    duration: '0s',
+    totalThrusts: 0,
+    effectiveThrusts: 0,
+    averageForce: 0,
+    forceConsistency: 0,
+    positionAccuracy: 0,
+    angleAccuracy: 0,
+    feedback: [{
+      type: 'warning' as const,
+      message: 'No session data available',
+      detail: 'Complete a training session to see your analytics.'
+    }]
   };
 
   return (

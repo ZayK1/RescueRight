@@ -1,13 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { bluetoothManager, SensorData } from '../lib/bluetooth';
 import {
-  calibrationEngine,
-  RawSensorData,
-  CalibratedSensorData,
   EMAFilter,
   MedianFilter,
   DataQuality,
 } from '../lib/calibration';
+import { sessionStorage } from '../lib/sessionStorage';
 
 export interface TrainingData {
   compressionDepth: number;
@@ -73,6 +71,9 @@ export function useBluetoothTrainingData(useMockData: boolean = false) {
 
     setData((prev) => ({ ...prev, isConnected: true }));
 
+    // Start session tracking
+    sessionStorage.startSession();
+
     // Subscribe to all sensor data
     const subscribeToSensors = async () => {
       try {
@@ -132,10 +133,20 @@ export function useBluetoothTrainingData(useMockData: boolean = false) {
               if (detectThrust(filteredForce)) {
                 thrustsCountRef.current += 1;
                 updated.thrusts = thrustsCountRef.current;
+
+                // Record thrust in session storage
+                sessionStorage.recordThrust(
+                  filteredForce,
+                  { x: filteredPositionX, y: filteredPositionY },
+                  filteredAngle
+                );
               }
 
               // Calculate compression rate
               updated.compressionRate = calculateCompressionRate();
+
+              // Update session stats
+              sessionStorage.updateStats(filteredForce, updated.compressionRate);
 
               // Update feedback
               updated.feedback = generateFeedback(
