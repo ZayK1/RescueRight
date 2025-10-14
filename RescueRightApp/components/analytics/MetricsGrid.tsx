@@ -61,14 +61,19 @@ interface MetricsGridProps {
     totalThrusts: number;
     averageForce: number;
     positionAccuracy: number;
-    forceConsistency?: number;
+    forceConsistency: number;
+    angleAccuracy: number;
   };
 }
 
 export function MetricsGrid({ data }: MetricsGridProps) {
   // Calculate derived metrics
-  const effectiveness = Math.round((data.effectiveThrusts / data.totalThrusts) * 100);
-  const forceInRange = data.averageForce >= 80 && data.averageForce <= 120;
+  const effectiveness = data.totalThrusts > 0
+    ? Math.round((data.effectiveThrusts / data.totalThrusts) * 100)
+    : 0;
+
+  // Target force range is 20-60N (adjusted for Heimlich)
+  const forceInRange = data.averageForce >= 20 && data.averageForce <= 60;
 
   const metrics = [
     {
@@ -76,48 +81,48 @@ export function MetricsGrid({ data }: MetricsGridProps) {
       label: 'Hand Position',
       value: data.positionAccuracy,
       unit: '%',
-      status: data.positionAccuracy >= 90 ? 'excellent' : data.positionAccuracy >= 75 ? 'good' : 'warning',
-      subtitle: data.positionAccuracy >= 90 ? 'Perfect placement' : 'Needs focus',
+      status: (data.positionAccuracy >= 80 ? 'excellent' : data.positionAccuracy >= 60 ? 'good' : 'warning') as 'excellent' | 'good' | 'warning' | 'neutral',
+      subtitle: data.positionAccuracy >= 80 ? 'Excellent placement' : data.positionAccuracy >= 60 ? 'Good placement' : 'Needs improvement',
     },
     {
       icon: <Zap size={22} color={theme.colors.success} strokeWidth={2.5} />,
       label: 'Thrust Force',
-      value: data.averageForce,
+      value: data.averageForce.toFixed(1),
       unit: 'N',
-      status: forceInRange ? 'excellent' : data.averageForce > 120 ? 'warning' : 'good',
-      subtitle: forceInRange ? 'Optimal range' : data.averageForce > 120 ? 'Too forceful' : 'Increase force',
+      status: (forceInRange ? 'excellent' : data.averageForce > 60 ? 'warning' : 'good') as 'excellent' | 'good' | 'warning' | 'neutral',
+      subtitle: forceInRange ? 'Optimal range' : data.averageForce > 60 ? 'Too forceful' : 'Increase force',
     },
     {
       icon: <Target size={22} color={theme.colors.warning} strokeWidth={2.5} />,
       label: 'Effectiveness',
       value: effectiveness,
       unit: '%',
-      status: effectiveness >= 85 ? 'excellent' : effectiveness >= 70 ? 'good' : 'warning',
+      status: (effectiveness >= 85 ? 'excellent' : effectiveness >= 70 ? 'good' : 'warning') as 'excellent' | 'good' | 'warning' | 'neutral',
       subtitle: `${data.effectiveThrusts}/${data.totalThrusts} effective`,
     },
     {
-      icon: <Activity size={22} color={theme.colors.error} strokeWidth={2.5} />,
+      icon: <Activity size={22} color={theme.colors.secondary} strokeWidth={2.5} />,
       label: 'Total Thrusts',
       value: data.totalThrusts,
       unit: 'thrusts',
-      status: 'neutral',
+      status: 'neutral' as 'excellent' | 'good' | 'warning' | 'neutral',
       subtitle: 'Completed',
     },
     {
-      icon: <TrendingUp size={22} color={theme.colors.secondary} strokeWidth={2.5} />,
+      icon: <TrendingUp size={22} color={theme.colors.primary} strokeWidth={2.5} />,
       label: 'Consistency',
-      value: data.forceConsistency || 88,
+      value: data.forceConsistency,
       unit: '%',
-      status: (data.forceConsistency || 88) >= 85 ? 'excellent' : 'good',
+      status: (data.forceConsistency >= 80 ? 'excellent' : data.forceConsistency >= 60 ? 'good' : 'warning') as 'excellent' | 'good' | 'warning' | 'neutral',
       subtitle: 'Force variance',
     },
     {
       icon: <Shield size={22} color={theme.colors.success} strokeWidth={2.5} />,
-      label: 'Safety Score',
+      label: 'Overall Score',
       value: data.overallScore,
       unit: '/100',
-      status: data.overallScore >= 90 ? 'excellent' : data.overallScore >= 75 ? 'good' : 'warning',
-      subtitle: 'No injury risk',
+      status: (data.overallScore >= 85 ? 'excellent' : data.overallScore >= 70 ? 'good' : 'warning') as 'excellent' | 'good' | 'warning' | 'neutral',
+      subtitle: data.overallScore >= 85 ? 'Excellent!' : data.overallScore >= 70 ? 'Good job' : 'Keep practicing',
     },
   ];
 
@@ -143,10 +148,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.borderLight,
     borderLeftWidth: 4,
-    padding: 18,
+    padding: 16,
     marginBottom: 14,
     ...theme.shadows.md,
     position: 'relative',
+    minHeight: 150,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -177,7 +183,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   label: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '600',
     color: theme.colors.text.tertiary,
     marginBottom: 8,

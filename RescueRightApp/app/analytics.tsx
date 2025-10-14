@@ -73,6 +73,40 @@ export default function AnalyticsScreen() {
     return Math.round(Math.min(100, score));
   };
 
+  // Calculate force consistency from thrust history
+  const calculateForceConsistency = (): number => {
+    if (!sessionData || sessionData.thrustHistory.length < 2) return 0;
+
+    const forces = sessionData.thrustHistory.map(t => t.force);
+    const avgForce = forces.reduce((sum, f) => sum + f, 0) / forces.length;
+
+    // Calculate standard deviation
+    const squaredDiffs = forces.map(f => Math.pow(f - avgForce, 2));
+    const variance = squaredDiffs.reduce((sum, d) => sum + d, 0) / forces.length;
+    const stdDev = Math.sqrt(variance);
+
+    // Convert to consistency percentage (lower std dev = higher consistency)
+    // Assume std dev of 10N = 50% consistency, 0N = 100%
+    const consistency = Math.max(0, 100 - (stdDev / 10) * 50);
+    return Math.round(consistency);
+  };
+
+  // Calculate angle accuracy from thrust history
+  const calculateAngleAccuracy = (): number => {
+    if (!sessionData || sessionData.thrustHistory.length === 0) return 0;
+
+    // Target angle for Heimlich is roughly 45° upward (negative in our system)
+    const targetAngle = -45;
+    const angleThreshold = 20; // ±20° is acceptable
+
+    const accurateAngles = sessionData.thrustHistory.filter(t => {
+      const angleDiff = Math.abs(t.angle - targetAngle);
+      return angleDiff <= angleThreshold;
+    });
+
+    return Math.round((accurateAngles.length / sessionData.thrustHistory.length) * 100);
+  };
+
   const generateFeedback = () => {
     if (!sessionData) return [];
 
@@ -127,13 +161,35 @@ export default function AnalyticsScreen() {
       feedback.push({
         type: 'success',
         message: 'Good rhythm maintained',
-        detail: `Average rate of ${sessionData.averageRate} thrusts/min is appropriate for Heimlich maneuver.`
+        detail: `Average rate of ${sessionData.averageRate.toFixed(0)} thrusts/min is appropriate for Heimlich maneuver.`
       });
     } else if (sessionData.averageRate > targetRate + 2) {
       feedback.push({
         type: 'warning',
         message: 'Slow down your rhythm',
-        detail: `Rate of ${sessionData.averageRate} thrusts/min is too fast. Aim for controlled, deliberate thrusts.`
+        detail: `Rate of ${sessionData.averageRate.toFixed(0)} thrusts/min is too fast. Aim for controlled, deliberate thrusts.`
+      });
+    } else if (sessionData.averageRate > 0) {
+      feedback.push({
+        type: 'warning',
+        message: 'Increase thrust frequency',
+        detail: `Rate of ${sessionData.averageRate.toFixed(0)} thrusts/min is too slow. Aim for ${targetRate} thrusts per minute.`
+      });
+    }
+
+    // Consistency feedback
+    const consistency = calculateForceConsistency();
+    if (consistency >= 80) {
+      feedback.push({
+        type: 'success',
+        message: 'Excellent force consistency',
+        detail: `${consistency}% consistency shows controlled, repeatable technique.`
+      });
+    } else if (consistency < 60) {
+      feedback.push({
+        type: 'warning',
+        message: 'Improve thrust consistency',
+        detail: `${consistency}% consistency. Focus on applying similar force for each thrust.`
       });
     }
 
@@ -146,9 +202,9 @@ export default function AnalyticsScreen() {
     totalThrusts: sessionData.totalThrusts,
     effectiveThrusts: Math.round(sessionData.totalThrusts * (sessionData.positionAccuracy / 100)),
     averageForce: parseFloat(sessionData.averageForce.toFixed(1)),
-    forceConsistency: 85, // Placeholder - could calculate from thrustHistory
+    forceConsistency: calculateForceConsistency(), // Real calculation
     positionAccuracy: sessionData.positionAccuracy,
-    angleAccuracy: 90, // Placeholder - could calculate from thrustHistory
+    angleAccuracy: calculateAngleAccuracy(), // Real calculation
     feedback: generateFeedback()
   } : {
     overallScore: 0,
@@ -234,9 +290,9 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.background,
   },
   content: {
-    paddingTop: 120,
+    paddingTop: 100,
     paddingBottom: 40,
-    paddingHorizontal: theme.spacing.lg,
+    paddingHorizontal: theme.spacing.md,
   },
   section: {
     marginBottom: 28,
