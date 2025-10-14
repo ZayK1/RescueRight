@@ -233,7 +233,11 @@ export default function AnalyticsScreen() {
       >
         {/* Hero Card */}
         <View style={styles.section}>
-          <HeroSuccessCard score={analyticsData.overallScore} duration={analyticsData.duration} />
+          <HeroSuccessCard 
+            score={analyticsData.overallScore} 
+            duration={analyticsData.duration} 
+            thrustHistory={sessionData?.thrustHistory || []} 
+          />
         </View>
 
         {/* Performance Analytics */}

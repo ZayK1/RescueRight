@@ -1,12 +1,11 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
-import Animated, { useAnimatedProps, useSharedValue, withSpring, useAnimatedStyle, interpolate } from 'react-native-reanimated';
+import Animated, { useAnimatedProps, useSharedValue, withSpring } from 'react-native-reanimated';
 import { Zap, Target } from 'lucide-react-native';
 import { theme } from '../../styles/theme';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
-const AnimatedText = Animated.createAnimatedComponent(Text);
 
 const GAUGE_SIZE = 240;
 const STROKE_WIDTH = 24;
@@ -21,46 +20,82 @@ interface ForceGaugeProps {
 
 export function ForceGauge({ force, targetMin, targetMax }: ForceGaugeProps) {
   const progress = useSharedValue(0);
-  const displayForce = useSharedValue(0);
+
+  // Peak hold state - holds the displayed force value
+  const [displayedForce, setDisplayedForce] = useState(0);
+  const decayIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const lastForceTimeRef = useRef<number>(Date.now());
 
   useEffect(() => {
-    // Force decay mechanism: Hold the value, then slowly decay
+    const now = Date.now();
+
+    // If new force is detected
     if (force > 0) {
-      // New force applied - update immediately
-      displayForce.value = force;
+      // Update displayed force immediately if it's higher
+      if (force > displayedForce) {
+        setDisplayedForce(force);
+      }
+      lastForceTimeRef.current = now;
 
-      // Update progress with spring animation
-      const normalizedProgress = Math.min(Math.max(force / 200, 0), 1);
-      progress.value = withSpring(normalizedProgress, {
-        damping: 20,
-        stiffness: 90,
-      });
+      // Clear any existing decay timer
+      if (decayIntervalRef.current) {
+        clearInterval(decayIntervalRef.current);
+        decayIntervalRef.current = null;
+      }
     } else {
-      // Force is 0 - decay VERY slowly over 3 seconds
-      displayForce.value = withSpring(0, {
-        damping: 100, // Very high damping = very slow
-        stiffness: 5,  // Very low stiffness = slow decay
-      });
+      // Force is 0 - start decay after 500ms hold time
+      const timeSinceLastForce = now - lastForceTimeRef.current;
 
-      progress.value = withSpring(0, {
-        damping: 100,
-        stiffness: 5,
-      });
+      if (timeSinceLastForce > 500 && !decayIntervalRef.current) {
+        // Start gradual decay - reduce by 10% every 100ms
+        decayIntervalRef.current = setInterval(() => {
+          setDisplayedForce(prev => {
+            const newValue = prev * 0.9; // Decay by 10%
+            if (newValue < 1) {
+              // Stop decay when very close to 0
+              if (decayIntervalRef.current) {
+                clearInterval(decayIntervalRef.current);
+                decayIntervalRef.current = null;
+              }
+              return 0;
+            }
+            return newValue;
+          });
+        }, 100); // Update every 100ms for smooth decay
+      }
     }
-  }, [force]);
+
+    // Cleanup on unmount
+    return () => {
+      if (decayIntervalRef.current) {
+        clearInterval(decayIntervalRef.current);
+      }
+    };
+  }, [force, displayedForce]);
+
+  // Update progress animation based on displayed force
+  useEffect(() => {
+    const normalizedProgress = Math.min(Math.max(displayedForce / 200, 0), 1);
+    progress.value = withSpring(normalizedProgress, {
+      damping: 15,
+      stiffness: 80,
+    });
+  }, [displayedForce]);
 
   const animatedProps = useAnimatedProps(() => {
-    const angle = progress.value * 270; // 270 degrees for 3/4 circle
-    // FIX: Reverse the direction by using positive offset
-    const strokeDashoffset = (CIRCUMFERENCE / 8) + (CIRCUMFERENCE * (1 - progress.value) * 270) / 360;
+    // Start from bottom-left, fill clockwise to bottom-right
+    const offset = CIRCUMFERENCE / 8; // Start position (bottom-left)
+    const arcLength = (CIRCUMFERENCE * 270) / 360; // 270 degree arc length
+    const strokeDashoffset = offset + arcLength - (arcLength * progress.value);
+
     return { strokeDashoffset };
   });
 
   const getStatus = () => {
-    if (force < 60) return { text: 'Too Low', color: '#EF4444', bgColor: 'rgba(239, 68, 68, 0.1)' };
-    if (force < targetMin) return { text: 'Low', color: '#F59E0B', bgColor: 'rgba(245, 158, 11, 0.1)' };
-    if (force <= targetMax) return { text: 'Optimal', color: '#10B981', bgColor: 'rgba(16, 185, 129, 0.1)' };
-    if (force <= 150) return { text: 'High', color: '#F59E0B', bgColor: 'rgba(245, 158, 11, 0.1)' };
+    if (displayedForce < 60) return { text: 'Too Low', color: '#EF4444', bgColor: 'rgba(239, 68, 68, 0.1)' };
+    if (displayedForce < targetMin) return { text: 'Low', color: '#F59E0B', bgColor: 'rgba(245, 158, 11, 0.1)' };
+    if (displayedForce <= targetMax) return { text: 'Optimal', color: '#10B981', bgColor: 'rgba(16, 185, 129, 0.1)' };
+    if (displayedForce <= 150) return { text: 'High', color: '#F59E0B', bgColor: 'rgba(245, 158, 11, 0.1)' };
     return { text: 'Too High', color: '#EF4444', bgColor: 'rgba(239, 68, 68, 0.1)' };
   };
 
@@ -130,7 +165,7 @@ export function ForceGauge({ force, targetMin, targetMax }: ForceGaugeProps) {
 
         {/* Center Display */}
         <View style={styles.centerDisplay}>
-          <Text style={styles.forceValue}>{Math.round(force)}</Text>
+          <Text style={styles.forceValue}>{Math.round(displayedForce)}</Text>
           <Text style={styles.forceUnit}>Newtons</Text>
           <View style={[styles.statusBadge, { backgroundColor: status.bgColor }]}>
             <Text style={[styles.statusText, { color: status.color }]}>{status.text}</Text>

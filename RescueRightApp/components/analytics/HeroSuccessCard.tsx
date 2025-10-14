@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Check, Award, Clock, TrendingUp } from 'lucide-react-native';
-import Svg, { Circle, Defs, LinearGradient, Stop, G } from 'react-native-svg';
+import Svg, { Circle, Defs, LinearGradient, Stop, G, Polyline } from 'react-native-svg';
 import Animated, {
   useAnimatedProps,
   useDerivedValue,
@@ -9,11 +9,10 @@ import Animated, {
   useSharedValue,
   withSpring,
   withSequence,
-  useAnimatedStyle,
-  interpolate,
   Easing
 } from 'react-native-reanimated';
 import { theme } from '../../styles/theme';
+import { ThrustData } from '../../lib/sessionStorage';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 const CIRCLE_LENGTH = 2 * Math.PI * 58; // 2 * PI * R
@@ -21,9 +20,30 @@ const CIRCLE_LENGTH = 2 * Math.PI * 58; // 2 * PI * R
 interface HeroSuccessCardProps {
   score: number;
   duration: number;
+  thrustHistory: ThrustData[];
 }
 
-export function HeroSuccessCard({ score, duration }: HeroSuccessCardProps) {
+// Function to generate SVG path from thrust history
+const generateGraphPath = (history: ThrustData[], width: number, height: number) => {
+  if (history.length < 2) return '0,0';
+
+  const maxForce = Math.max(...history.map(t => t.force), 0) || 100;
+  const minTime = history[0].timestamp;
+  const maxTime = history[history.length - 1].timestamp;
+  const timeRange = maxTime - minTime;
+
+  if (timeRange === 0) return `0,${height}`;
+
+  return history
+    .map(thrust => {
+      const x = ((thrust.timestamp - minTime) / timeRange) * width;
+      const y = height - (thrust.force / maxForce) * height;
+      return `${x.toFixed(2)},${y.toFixed(2)}`;
+    })
+    .join(' ');
+};
+
+export function HeroSuccessCard({ score, duration, thrustHistory }: HeroSuccessCardProps) {
   const progress = useDerivedValue(() => {
     return withTiming(score / 100, { duration: 1400, easing: Easing.bezier(0.25, 0.1, 0.25, 1) });
   });
@@ -32,10 +52,7 @@ export function HeroSuccessCard({ score, duration }: HeroSuccessCardProps) {
   const badgeScale = useSharedValue(0);
 
   useEffect(() => {
-    // Badge entrance animation
     badgeScale.value = withSpring(1, { damping: 12, stiffness: 100 });
-
-    // Score entrance animation with slight overshoot
     scale.value = withSequence(
       withTiming(0, { duration: 100 }),
       withSpring(1, { damping: 15, stiffness: 120 })
@@ -46,12 +63,13 @@ export function HeroSuccessCard({ score, duration }: HeroSuccessCardProps) {
     strokeDashoffset: CIRCLE_LENGTH * (1 - progress.value),
   }));
 
-  const scoreAnimatedStyle = useAnimatedStyle(() => ({
+  const scoreAnimatedStyle = useAnimatedProps(() => ({
     transform: [{ scale: scale.value }],
     opacity: scale.value,
+    text: `${score}`
   }));
 
-  const badgeAnimatedStyle = useAnimatedStyle(() => ({
+  const badgeAnimatedStyle = useAnimatedProps(() => ({
     transform: [{ scale: badgeScale.value }],
   }));
 
@@ -61,7 +79,6 @@ export function HeroSuccessCard({ score, duration }: HeroSuccessCardProps) {
     return `${mins}m ${secs}s`;
   };
 
-  // Determine performance level
   const getPerformanceLevel = () => {
     if (score >= 90) return { text: 'Excellent Technique', color: theme.colors.success, emoji: '🎉' };
     if (score >= 75) return { text: 'Good Technique', color: theme.colors.primary, emoji: '👍' };
@@ -70,6 +87,7 @@ export function HeroSuccessCard({ score, duration }: HeroSuccessCardProps) {
   };
 
   const performance = getPerformanceLevel();
+  const graphPoints = generateGraphPath(thrustHistory, 280, 100);
 
   return (
     <View style={styles.card}>
@@ -87,71 +105,38 @@ export function HeroSuccessCard({ score, duration }: HeroSuccessCardProps) {
       {/* Title & Subtitle */}
       <View style={styles.headerContainer}>
         <Text style={styles.title}>{performance.text}</Text>
-        <Text style={styles.subtitle}>Heimlich maneuver performed with precision</Text>
+        <Text style={styles.subtitle}>Session performance analysis</Text>
       </View>
 
-      {/* Score Circle with Enhanced Design */}
-      <View style={styles.scoreContainer}>
-        {/* Outer decorative ring */}
-        <View style={styles.decorativeRing} />
-
-        <Svg width="160" height="160" viewBox="0 0 160 160">
-          <Defs>
-            <LinearGradient id="scoreGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <Stop offset="0%" stopColor={theme.colors.success} stopOpacity="1" />
-              <Stop offset="50%" stopColor={theme.colors.primary} stopOpacity="1" />
-              <Stop offset="100%" stopColor={theme.colors.secondary} stopOpacity="1" />
-            </LinearGradient>
-            <LinearGradient id="bgGrad" x1="0" y1="0" x2="1" y2="1">
-              <Stop offset="0" stopColor="#F3F4F6" stopOpacity="1" />
-              <Stop offset="1" stopColor="#E5E7EB" stopOpacity="1" />
-            </LinearGradient>
-          </Defs>
-          <G rotation="0" origin="80, 80">
-            {/* Background Circle with Gradient */}
-            <Circle
-              cx="80"
-              cy="80"
-              r="58"
-              stroke="url(#bgGrad)"
-              strokeWidth="10"
-              fill="none"
-            />
-            {/* Progress Circle with Gradient */}
-            <AnimatedCircle
-              cx="80"
-              cy="80"
-              r="58"
-              stroke="url(#scoreGrad)"
-              strokeWidth="10"
-              strokeDasharray={CIRCLE_LENGTH}
-              animatedProps={animatedProps}
-              strokeLinecap="round"
-              transform="rotate(-90 80 80)"
-              fill="none"
-            />
-            {/* Inner decorative circle */}
-            <Circle
-              cx="80"
-              cy="80"
-              r="46"
-              stroke={`${performance.color}20`}
-              strokeWidth="1.5"
-              strokeDasharray="4 4"
-              fill="none"
-            />
-          </G>
-        </Svg>
-
-        {/* Score Text with Animation */}
-        <Animated.View style={[styles.scoreTextContainer, scoreAnimatedStyle]}>
-          <Text style={[styles.scoreText, { color: performance.color }]}>{score}</Text>
-          <View style={styles.scoreLabelRow}>
-            <View style={[styles.scoreDot, { backgroundColor: performance.color }]} />
-            <Text style={styles.scoreLabel}>SCORE</Text>
-            <View style={[styles.scoreDot, { backgroundColor: performance.color }]} />
+      {/* Thrust History Graph */}
+      <View style={styles.graphContainer}>
+        <View style={styles.graphHeader}>
+          <Text style={styles.graphTitle}>Thrust Force Over Time</Text>
+          <View style={styles.scorePill}>
+            <Text style={styles.scorePillText}>{score}% SCORE</Text>
           </View>
-        </Animated.View>
+        </View>
+        
+        {thrustHistory.length > 1 ? (
+          <Svg width="100%" height={120}>
+            <Defs>
+              <LinearGradient id="graphGradient" x1="0" y1="0" x2="0" y2="1">
+                <Stop offset="0%" stopColor={performance.color} stopOpacity={0.4} />
+                <Stop offset="100%" stopColor={performance.color} stopOpacity={0} />
+              </LinearGradient>
+            </Defs>
+            <Polyline
+              points={graphPoints}
+              fill="url(#graphGradient)"
+              stroke={performance.color}
+              strokeWidth={2.5}
+            />
+          </Svg>
+        ) : (
+          <View style={styles.noDataContainer}>
+            <Text style={styles.noDataText}>Not enough data to display graph.</Text>
+          </View>
+        )}
       </View>
 
       {/* Stats Row */}
@@ -245,49 +230,46 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     maxWidth: 280,
   },
-  scoreContainer: {
-    width: 160,
-    height: 160,
-    marginBottom: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
+  graphContainer: {
+    width: '100%',
+    marginTop: 24,
+    marginBottom: 12,
+    paddingHorizontal: 8,
   },
-  decorativeRing: {
-    position: 'absolute',
-    width: 176,
-    height: 176,
-    borderRadius: 88,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 102, 204, 0.08)',
-    borderStyle: 'dashed',
-  },
-  scoreTextContainer: {
-    position: 'absolute',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  scoreText: {
-    fontSize: 56,
-    fontWeight: '800',
-    letterSpacing: -2,
-    marginBottom: 2,
-  },
-  scoreLabelRow: {
+  graphHeader: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 4,
+    marginBottom: 12,
   },
-  scoreDot: {
-    width: 3,
-    height: 3,
-    borderRadius: 1.5,
+  graphTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.colors.text.secondary,
   },
-  scoreLabel: {
-    fontSize: 11,
+  scorePill: {
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 12,
+  },
+  scorePillText: {
+    fontSize: 12,
     fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
+  noDataContainer: {
+    height: 120,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.02)',
+    borderRadius: 16,
+  },
+  noDataText: {
+    fontSize: 14,
+    fontWeight: '600',
     color: theme.colors.text.tertiary,
-    letterSpacing: 1.2,
   },
   statsRow: {
     flexDirection: 'row',
