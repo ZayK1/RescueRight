@@ -12,11 +12,12 @@
  * - Visual graphs for trends
  */
 
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Switch } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Switch, StyleSheet } from 'react-native';
 import { useBluetoothTrainingData } from '../hooks/useBluetoothTrainingData';
 import { bluetoothManager } from '../lib/bluetooth';
 import { Activity, Wifi, WifiOff, Download, Trash2, CheckCircle, AlertTriangle } from 'lucide-react-native';
+import { theme } from '../styles/theme';
 
 export default function SensorDebugScreen() {
   const [useMockData, setUseMockData] = useState(false);
@@ -30,10 +31,8 @@ export default function SensorDebugScreen() {
   // Start/stop data logging
   const toggleLogging = () => {
     if (isLogging) {
-      // Stop logging
       setIsLogging(false);
     } else {
-      // Start logging
       setLogData([]);
       setIsLogging(true);
     }
@@ -46,7 +45,6 @@ export default function SensorDebugScreen() {
       return;
     }
 
-    // Generate CSV content
     const headers = Object.keys(logData[0]).join(',');
     const rows = logData.map((row) => Object.values(row).join(','));
     const csv = [headers, ...rows].join('\n');
@@ -80,207 +78,170 @@ export default function SensorDebugScreen() {
       };
 
       setLogData((prev) => [...prev, logEntry]);
-    }, 100); // Log every 100ms
+    }, 100);
 
     return () => clearInterval(interval);
   }, [isLogging, trainingData]);
 
   return (
-    <ScrollView className="flex-1 bg-gray-900 p-4">
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {/* Header */}
-      <View className="mb-6">
-        <Text className="text-3xl font-bold text-white mb-2">Sensor Debug</Text>
-        <Text className="text-gray-400">Developer tool for sensor testing and calibration</Text>
+      <View style={styles.header}>
+        <Text style={styles.title}>Sensor Debug</Text>
+        <Text style={styles.subtitle}>Developer tool for sensor testing and calibration</Text>
       </View>
 
       {/* Connection Status */}
-      <View className="bg-gray-800 rounded-lg p-4 mb-4">
-        <View className="flex-row items-center justify-between mb-3">
-          <Text className="text-white text-lg font-semibold">Connection Status</Text>
+      <View style={styles.card}>
+        <View style={styles.cardHeader}>
+          <Text style={styles.cardTitle}>Connection Status</Text>
           {isConnected ? (
-            <Wifi size={24} color="#10b981" />
+            <Wifi size={24} color={theme.colors.success} />
           ) : (
-            <WifiOff size={24} color="#ef4444" />
+            <WifiOff size={24} color={theme.colors.error} />
           )}
         </View>
 
-        <View className="flex-row items-center mb-2">
-          <View
-            className={`w-3 h-3 rounded-full mr-2 ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}
-          />
-          <Text className="text-white">
+        <View style={styles.row}>
+          <View style={[styles.statusDot, isConnected ? styles.statusDotConnected : styles.statusDotDisconnected]} />
+          <Text style={styles.bodyText}>
             {isConnected ? 'Connected to vest' : 'Not connected'}
           </Text>
         </View>
 
-        <View className="flex-row items-center mt-4">
-          <Text className="text-gray-400 mr-3">Use Mock Data:</Text>
+        <View style={styles.switchRow}>
+          <Text style={styles.labelText}>Use Mock Data:</Text>
           <Switch
             value={useMockData}
             onValueChange={setUseMockData}
-            trackColor={{ false: '#374151', true: '#10b981' }}
-            thumbColor={useMockData ? '#fff' : '#9ca3af'}
+            trackColor={{ false: theme.colors.border, true: theme.colors.success }}
+            thumbColor={useMockData ? theme.colors.surface : theme.colors.text.disabled}
           />
         </View>
       </View>
 
       {/* Real-time Sensor Values */}
-      <View className="bg-gray-800 rounded-lg p-4 mb-4">
-        <Text className="text-white text-lg font-semibold mb-3">Real-time Sensor Data</Text>
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Real-time Sensor Data</Text>
 
         {/* Force */}
-        <View className="mb-3">
-          <View className="flex-row justify-between mb-1">
-            <Text className="text-gray-400">Force</Text>
-            <Text className="text-white font-mono">{trainingData.compressionDepth.toFixed(1)} N</Text>
+        <View style={styles.metricContainer}>
+          <View style={styles.metricHeader}>
+            <Text style={styles.metricLabel}>Force</Text>
+            <Text style={styles.metricValue}>{trainingData.compressionDepth.toFixed(1)} N</Text>
           </View>
-          <View className="bg-gray-700 h-2 rounded-full overflow-hidden">
-            <View
-              className="bg-blue-500 h-full"
-              style={{ width: `${Math.min((trainingData.compressionDepth / 200) * 100, 100)}%` }}
-            />
+          <View style={styles.progressBar}>
+            <View style={[styles.progressFill, styles.progressBlue, { width: `${Math.min((trainingData.compressionDepth / 200) * 100, 100)}%` }]} />
           </View>
           {trainingData.rawForce !== undefined && (
-            <View className="flex-row justify-between mt-1">
-              <Text className="text-xs text-gray-500">Raw: {trainingData.rawForce.toFixed(1)} N</Text>
-              <Text className="text-xs text-gray-500">
-                Filtered: {trainingData.filteredForce?.toFixed(1)} N
-              </Text>
+            <View style={styles.metricDetails}>
+              <Text style={styles.metricDetailText}>Raw: {trainingData.rawForce.toFixed(1)} N</Text>
+              <Text style={styles.metricDetailText}>Filtered: {trainingData.filteredForce?.toFixed(1)} N</Text>
             </View>
           )}
         </View>
 
         {/* Compression Depth */}
-        <View className="mb-3">
-          <View className="flex-row justify-between mb-1">
-            <Text className="text-gray-400">Compression Depth</Text>
-            <Text className="text-white font-mono">
-              {(trainingData.compressionDepth * 0.05).toFixed(1)} cm
-            </Text>
+        <View style={styles.metricContainer}>
+          <View style={styles.metricHeader}>
+            <Text style={styles.metricLabel}>Compression Depth</Text>
+            <Text style={styles.metricValue}>{(trainingData.compressionDepth * 0.05).toFixed(1)} cm</Text>
           </View>
-          <View className="bg-gray-700 h-2 rounded-full overflow-hidden">
-            <View
-              className="bg-green-500 h-full"
-              style={{
-                width: `${Math.min(((trainingData.compressionDepth * 0.05) / 6) * 100, 100)}%`,
-              }}
-            />
+          <View style={styles.progressBar}>
+            <View style={[styles.progressFill, styles.progressGreen, { width: `${Math.min(((trainingData.compressionDepth * 0.05) / 6) * 100, 100)}%` }]} />
           </View>
         </View>
 
         {/* Position */}
-        <View className="mb-3">
-          <Text className="text-gray-400 mb-2">Hand Position</Text>
-          <View className="flex-row justify-between">
-            <View className="flex-1 mr-2">
-              <View className="flex-row justify-between mb-1">
-                <Text className="text-xs text-gray-500">X</Text>
-                <Text className="text-xs text-white font-mono">
-                  {trainingData.handPosition.x.toFixed(3)}
-                </Text>
+        <View style={styles.metricContainer}>
+          <Text style={styles.metricLabel}>Hand Position</Text>
+          <View style={styles.positionRow}>
+            <View style={styles.positionAxis}>
+              <View style={styles.metricHeader}>
+                <Text style={styles.metricDetailText}>X</Text>
+                <Text style={styles.metricDetailValue}>{trainingData.handPosition.x.toFixed(3)}</Text>
               </View>
-              <View className="bg-gray-700 h-2 rounded-full overflow-hidden">
-                <View
-                  className="bg-purple-500 h-full"
-                  style={{ width: `${trainingData.handPosition.x * 100}%` }}
-                />
+              <View style={styles.progressBar}>
+                <View style={[styles.progressFill, styles.progressPurple, { width: `${trainingData.handPosition.x * 100}%` }]} />
               </View>
             </View>
-            <View className="flex-1 ml-2">
-              <View className="flex-row justify-between mb-1">
-                <Text className="text-xs text-gray-500">Y</Text>
-                <Text className="text-xs text-white font-mono">
-                  {trainingData.handPosition.y.toFixed(3)}
-                </Text>
+            <View style={styles.positionAxis}>
+              <View style={styles.metricHeader}>
+                <Text style={styles.metricDetailText}>Y</Text>
+                <Text style={styles.metricDetailValue}>{trainingData.handPosition.y.toFixed(3)}</Text>
               </View>
-              <View className="bg-gray-700 h-2 rounded-full overflow-hidden">
-                <View
-                  className="bg-purple-500 h-full"
-                  style={{ width: `${trainingData.handPosition.y * 100}%` }}
-                />
+              <View style={styles.progressBar}>
+                <View style={[styles.progressFill, styles.progressPurple, { width: `${trainingData.handPosition.y * 100}%` }]} />
               </View>
             </View>
           </View>
         </View>
 
         {/* Angle */}
-        <View className="mb-3">
-          <View className="flex-row justify-between mb-1">
-            <Text className="text-gray-400">Angle</Text>
-            <Text className="text-white font-mono">{trainingData.angle.toFixed(1)}°</Text>
+        <View style={styles.metricContainer}>
+          <View style={styles.metricHeader}>
+            <Text style={styles.metricLabel}>Angle</Text>
+            <Text style={styles.metricValue}>{trainingData.angle.toFixed(1)}°</Text>
           </View>
-          <View className="bg-gray-700 h-2 rounded-full overflow-hidden">
-            <View
-              className="bg-yellow-500 h-full"
-              style={{
-                width: `${((trainingData.angle + 180) / 360) * 100}%`,
-              }}
-            />
+          <View style={styles.progressBar}>
+            <View style={[styles.progressFill, styles.progressYellow, { width: `${((trainingData.angle + 180) / 360) * 100}%` }]} />
           </View>
         </View>
 
         {/* Compression Rate */}
-        <View className="mb-3">
-          <View className="flex-row justify-between mb-1">
-            <Text className="text-gray-400">Compression Rate</Text>
-            <Text className="text-white font-mono">{trainingData.compressionRate} /min</Text>
+        <View style={styles.metricContainer}>
+          <View style={styles.metricHeader}>
+            <Text style={styles.metricLabel}>Compression Rate</Text>
+            <Text style={styles.metricValue}>{trainingData.compressionRate} /min</Text>
           </View>
-          <View className="bg-gray-700 h-2 rounded-full overflow-hidden">
-            <View
-              className="bg-orange-500 h-full"
-              style={{
-                width: `${Math.min((trainingData.compressionRate / 120) * 100, 100)}%`,
-              }}
-            />
+          <View style={styles.progressBar}>
+            <View style={[styles.progressFill, styles.progressOrange, { width: `${Math.min((trainingData.compressionRate / 120) * 100, 100)}%` }]} />
           </View>
         </View>
 
         {/* Thrusts */}
-        <View className="flex-row justify-between">
-          <Text className="text-gray-400">Total Thrusts</Text>
-          <Text className="text-white font-mono text-2xl">{trainingData.thrusts}</Text>
+        <View style={styles.metricHeader}>
+          <Text style={styles.metricLabel}>Total Thrusts</Text>
+          <Text style={styles.thrustCount}>{trainingData.thrusts}</Text>
         </View>
       </View>
 
       {/* Data Quality */}
       {trainingData.dataQuality && (
-        <View className="bg-gray-800 rounded-lg p-4 mb-4">
-          <View className="flex-row items-center justify-between mb-3">
-            <Text className="text-white text-lg font-semibold">Data Quality</Text>
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Text style={styles.cardTitle}>Data Quality</Text>
             {trainingData.dataQuality.isValid ? (
-              <CheckCircle size={24} color="#10b981" />
+              <CheckCircle size={24} color={theme.colors.success} />
             ) : (
-              <AlertTriangle size={24} color="#f59e0b" />
+              <AlertTriangle size={24} color={theme.colors.warning} />
             )}
           </View>
 
-          <View className="flex-row justify-between mb-2">
-            <Text className="text-gray-400">Confidence</Text>
-            <Text className="text-white font-mono">
-              {(trainingData.dataQuality.confidence * 100).toFixed(1)}%
-            </Text>
+          <View style={styles.metricHeader}>
+            <Text style={styles.labelText}>Confidence</Text>
+            <Text style={styles.metricValue}>{(trainingData.dataQuality.confidence * 100).toFixed(1)}%</Text>
           </View>
 
-          <View className="bg-gray-700 h-2 rounded-full overflow-hidden mb-3">
+          <View style={styles.progressBar}>
             <View
-              className={`h-full ${
+              style={[
+                styles.progressFill,
                 trainingData.dataQuality.confidence > 0.8
-                  ? 'bg-green-500'
+                  ? styles.progressGreen
                   : trainingData.dataQuality.confidence > 0.6
-                  ? 'bg-yellow-500'
-                  : 'bg-red-500'
-              }`}
-              style={{ width: `${trainingData.dataQuality.confidence * 100}%` }}
+                  ? styles.progressYellow
+                  : styles.progressRed,
+                { width: `${trainingData.dataQuality.confidence * 100}%` },
+              ]}
             />
           </View>
 
           {trainingData.dataQuality.issues.length > 0 && (
-            <View>
-              <Text className="text-yellow-400 text-sm mb-2">Issues Detected:</Text>
+            <View style={styles.issuesContainer}>
+              <Text style={styles.issuesTitle}>Issues Detected:</Text>
               {trainingData.dataQuality.issues.map((issue, idx) => (
-                <Text key={idx} className="text-gray-400 text-xs ml-2 mb-1">
-                  • {issue}
-                </Text>
+                <Text key={idx} style={styles.issueText}>• {issue}</Text>
               ))}
             </View>
           )}
@@ -288,80 +249,283 @@ export default function SensorDebugScreen() {
       )}
 
       {/* Feedback */}
-      <View className="bg-gray-800 rounded-lg p-4 mb-4">
-        <Text className="text-white text-lg font-semibold mb-2">Current Feedback</Text>
-        <Text className="text-gray-300">{trainingData.feedback}</Text>
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Current Feedback</Text>
+        <Text style={styles.feedbackText}>{trainingData.feedback}</Text>
       </View>
 
       {/* Data Logging Controls */}
-      <View className="bg-gray-800 rounded-lg p-4 mb-4">
-        <View className="flex-row items-center justify-between mb-3">
-          <Text className="text-white text-lg font-semibold">Data Logging</Text>
-          <Activity size={24} color={isLogging ? '#10b981' : '#6b7280'} />
+      <View style={styles.card}>
+        <View style={styles.cardHeader}>
+          <Text style={styles.cardTitle}>Data Logging</Text>
+          <Activity size={24} color={isLogging ? theme.colors.success : theme.colors.text.disabled} />
         </View>
 
-        <View className="flex-row justify-between items-center mb-3">
-          <Text className="text-gray-400">Status:</Text>
-          <Text className={`font-semibold ${isLogging ? 'text-green-400' : 'text-gray-400'}`}>
+        <View style={styles.metricHeader}>
+          <Text style={styles.labelText}>Status:</Text>
+          <Text style={[styles.bodyText, isLogging ? styles.statusActive : styles.statusInactive]}>
             {isLogging ? 'Recording...' : 'Stopped'}
           </Text>
         </View>
 
-        <View className="flex-row justify-between items-center mb-4">
-          <Text className="text-gray-400">Samples Logged:</Text>
-          <Text className="text-white font-mono text-lg">{logData.length}</Text>
+        <View style={styles.metricHeader}>
+          <Text style={styles.labelText}>Samples Logged:</Text>
+          <Text style={styles.sampleCount}>{logData.length}</Text>
         </View>
 
-        <View className="flex-row justify-between">
+        <View style={styles.buttonRow}>
           <TouchableOpacity
             onPress={toggleLogging}
-            className={`flex-1 mr-2 p-3 rounded-lg ${
-              isLogging ? 'bg-red-600' : 'bg-green-600'
-            }`}
+            style={[styles.button, styles.buttonPrimary, isLogging ? styles.buttonDanger : styles.buttonSuccess]}
           >
-            <Text className="text-white text-center font-semibold">
-              {isLogging ? 'Stop Logging' : 'Start Logging'}
-            </Text>
+            <Text style={styles.buttonText}>{isLogging ? 'Stop Logging' : 'Start Logging'}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             onPress={exportLogData}
             disabled={logData.length === 0}
-            className={`p-3 rounded-lg ${
-              logData.length > 0 ? 'bg-blue-600' : 'bg-gray-700'
-            }`}
+            style={[styles.iconButton, styles.buttonInfo, logData.length === 0 && styles.buttonDisabled]}
           >
-            <Download size={20} color="#fff" />
+            <Download size={20} color={theme.colors.surface} />
           </TouchableOpacity>
 
           <TouchableOpacity
             onPress={clearLogData}
             disabled={logData.length === 0}
-            className={`ml-2 p-3 rounded-lg ${
-              logData.length > 0 ? 'bg-gray-700' : 'bg-gray-700 opacity-50'
-            }`}
+            style={[styles.iconButton, styles.buttonSecondary, logData.length === 0 && styles.buttonDisabled]}
           >
-            <Trash2 size={20} color="#fff" />
+            <Trash2 size={20} color={theme.colors.surface} />
           </TouchableOpacity>
         </View>
       </View>
 
       {/* Developer Notes */}
-      <View className="bg-gray-800 rounded-lg p-4 mb-6">
-        <Text className="text-white text-lg font-semibold mb-2">Developer Notes</Text>
-        <Text className="text-gray-400 text-sm mb-2">
-          • Use "Start Logging" to record sensor data for analysis
-        </Text>
-        <Text className="text-gray-400 text-sm mb-2">
-          • Export button copies CSV data to console (check logs)
-        </Text>
-        <Text className="text-gray-400 text-sm mb-2">
-          • Mock data simulates sensor readings for testing without hardware
-        </Text>
-        <Text className="text-gray-400 text-sm">
-          • Data quality indicators help diagnose sensor issues
-        </Text>
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Developer Notes</Text>
+        <Text style={styles.noteText}>• Use "Start Logging" to record sensor data for analysis</Text>
+        <Text style={styles.noteText}>• Export button copies CSV data to console (check logs)</Text>
+        <Text style={styles.noteText}>• Mock data simulates sensor readings for testing without hardware</Text>
+        <Text style={styles.noteText}>• Data quality indicators help diagnose sensor issues</Text>
       </View>
     </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+  },
+  content: {
+    padding: theme.spacing.lg,
+    paddingBottom: theme.spacing.xl,
+  },
+  header: {
+    marginBottom: theme.spacing.lg,
+  },
+  title: {
+    ...theme.typography.h1,
+    color: theme.colors.text.primary,
+    marginBottom: theme.spacing.xs,
+  },
+  subtitle: {
+    ...theme.typography.body,
+    color: theme.colors.text.secondary,
+  },
+  card: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.md,
+    marginBottom: theme.spacing.md,
+    ...theme.shadows.sm,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: theme.spacing.md,
+  },
+  cardTitle: {
+    ...theme.typography.h4,
+    color: theme.colors.text.primary,
+    marginBottom: theme.spacing.sm,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: theme.spacing.sm,
+  },
+  statusDot: {
+    width: 12,
+    height: 12,
+    borderRadius: theme.borderRadius.full,
+    marginRight: theme.spacing.sm,
+  },
+  statusDotConnected: {
+    backgroundColor: theme.colors.success,
+  },
+  statusDotDisconnected: {
+    backgroundColor: theme.colors.error,
+  },
+  bodyText: {
+    ...theme.typography.body,
+    color: theme.colors.text.primary,
+  },
+  switchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: theme.spacing.md,
+  },
+  labelText: {
+    ...theme.typography.body,
+    color: theme.colors.text.secondary,
+    marginRight: theme.spacing.sm,
+  },
+  metricContainer: {
+    marginBottom: theme.spacing.md,
+  },
+  metricHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: theme.spacing.xs,
+  },
+  metricLabel: {
+    ...theme.typography.body,
+    color: theme.colors.text.secondary,
+  },
+  metricValue: {
+    ...theme.typography.bodyMedium,
+    color: theme.colors.text.primary,
+    fontFamily: 'monospace',
+  },
+  progressBar: {
+    height: 8,
+    backgroundColor: theme.colors.borderLight,
+    borderRadius: theme.borderRadius.full,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+  },
+  progressBlue: {
+    backgroundColor: theme.colors.info,
+  },
+  progressGreen: {
+    backgroundColor: theme.colors.success,
+  },
+  progressPurple: {
+    backgroundColor: '#8B5CF6',
+  },
+  progressYellow: {
+    backgroundColor: '#FFE66D',
+  },
+  progressOrange: {
+    backgroundColor: theme.colors.warning,
+  },
+  progressRed: {
+    backgroundColor: theme.colors.error,
+  },
+  metricDetails: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: theme.spacing.xs,
+  },
+  metricDetailText: {
+    ...theme.typography.caption2,
+    color: theme.colors.text.tertiary,
+  },
+  metricDetailValue: {
+    ...theme.typography.caption2,
+    color: theme.colors.text.primary,
+    fontFamily: 'monospace',
+  },
+  positionRow: {
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+  },
+  positionAxis: {
+    flex: 1,
+  },
+  thrustCount: {
+    ...theme.typography.display,
+    color: theme.colors.text.primary,
+    fontFamily: 'monospace',
+  },
+  issuesContainer: {
+    marginTop: theme.spacing.md,
+  },
+  issuesTitle: {
+    ...theme.typography.bodySemibold,
+    color: theme.colors.warning,
+    marginBottom: theme.spacing.sm,
+  },
+  issueText: {
+    ...theme.typography.caption,
+    color: theme.colors.text.secondary,
+    marginBottom: theme.spacing.xs,
+    marginLeft: theme.spacing.sm,
+  },
+  feedbackText: {
+    ...theme.typography.body,
+    color: theme.colors.text.primary,
+  },
+  statusActive: {
+    color: theme.colors.success,
+    fontWeight: '600',
+  },
+  statusInactive: {
+    color: theme.colors.text.secondary,
+  },
+  sampleCount: {
+    ...theme.typography.h4,
+    color: theme.colors.text.primary,
+    fontFamily: 'monospace',
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    marginTop: theme.spacing.md,
+    gap: theme.spacing.sm,
+  },
+  button: {
+    flex: 1,
+    height: 48,
+    borderRadius: theme.borderRadius.lg,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  buttonPrimary: {
+    marginRight: theme.spacing.sm,
+  },
+  buttonSuccess: {
+    backgroundColor: theme.colors.success,
+  },
+  buttonDanger: {
+    backgroundColor: theme.colors.error,
+  },
+  buttonInfo: {
+    backgroundColor: theme.colors.info,
+  },
+  buttonSecondary: {
+    backgroundColor: theme.colors.text.secondary,
+  },
+  buttonDisabled: {
+    opacity: 0.5,
+  },
+  iconButton: {
+    width: 48,
+    height: 48,
+    borderRadius: theme.borderRadius.lg,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  buttonText: {
+    ...theme.typography.bodySemibold,
+    color: theme.colors.text.inverse,
+  },
+  noteText: {
+    ...theme.typography.caption,
+    color: theme.colors.text.secondary,
+    marginBottom: theme.spacing.sm,
+  },
+});

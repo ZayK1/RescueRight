@@ -4,29 +4,31 @@ import { theme } from '../../styles/theme';
 
 interface MetricsStripProps {
   thrusts: number;
-  avgForce: number; // Will be compression depth
-  accuracy: number; // Will be compression rate
+  avgForce: number;
+  accuracy: number;
 }
 
 const MetricItem = ({ label, value, unit }: { label: string; value: number; unit: string }) => (
   <View style={styles.metricItem}>
     <Text style={styles.metricLabel}>{label}</Text>
-    <Text style={styles.metricValue}>
-      {value}
-      <Text style={styles.metricUnit}> {unit}</Text>
-    </Text>
+    <View style={styles.metricValueContainer}>
+      <Text style={styles.metricValue}>{value}</Text>
+      {unit && <Text style={styles.metricUnit}>{unit}</Text>}
+    </View>
   </View>
 );
 
 export function MetricsStrip({ thrusts, avgForce, accuracy }: MetricsStripProps) {
   return (
     <View style={styles.container}>
-      <View style={styles.strip}>
-        <MetricItem label="Thrusts" value={thrusts} unit="" />
-        <View style={styles.separator} />
-        <MetricItem label="Avg. Force" value={Math.round(avgForce)} unit="N" />
-        <View style={styles.separator} />
-        <MetricItem label="Rate" value={Math.round(accuracy)} unit="TPM" />
+      <View style={styles.stripWrapper}>
+        <View style={styles.strip}>
+          <MetricItem label="Thrusts" value={thrusts} unit="" />
+          <View style={styles.separator} />
+          <MetricItem label="Avg. Force" value={Math.round(avgForce)} unit="N" />
+          <View style={styles.separator} />
+          <MetricItem label="Rate" value={Math.round(accuracy)} unit="TPM" />
+        </View>
       </View>
       <View style={styles.safeAreaSpacer} />
     </View>
@@ -41,17 +43,25 @@ const styles = StyleSheet.create({
     right: 0,
     zIndex: 40,
   },
-  strip: {
+  stripWrapper: {
     marginHorizontal: theme.spacing.md,
+    borderRadius: 32,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  strip: {
     height: 72,
-    backgroundColor: theme.colors.surface,
-    borderRadius: 36,
-    borderWidth: 1.5,
-    borderColor: theme.colors.borderLight,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 32,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.05)',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
-    ...theme.shadows.xl,
+    paddingHorizontal: theme.spacing.sm,
   },
   metricItem: {
     alignItems: 'center',
@@ -59,24 +69,36 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   metricLabel: {
-    ...theme.typography.micro,
+    fontSize: 11,
+    fontWeight: '600',
     color: theme.colors.text.tertiary,
-    marginBottom: 2,
+    marginBottom: 4,
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
+  },
+  metricValueContainer: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 2,
   },
   metricValue: {
-    ...theme.typography.h4,
+    fontSize: 24,
+    fontWeight: '700',
     color: theme.colors.text.primary,
+    letterSpacing: -0.5,
   },
   metricUnit: {
-    ...theme.typography.caption2,
+    fontSize: 11,
+    fontWeight: '600',
     color: theme.colors.text.tertiary,
+    marginLeft: 2,
   },
   separator: {
-    width: 1.5,
-    height: '50%',
-    backgroundColor: theme.colors.border,
+    width: 1,
+    height: '40%',
+    backgroundColor: 'rgba(0, 0, 0, 0.08)',
   },
   safeAreaSpacer: {
-    height: 34, // Standard safe area bottom inset
+    height: 34,
   },
 });

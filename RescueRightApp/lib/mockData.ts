@@ -13,7 +13,7 @@ export interface BluetoothDevice {
 export interface TrainingMetrics {
   compressionDepth: number; // Force in Newtons for Heimlich thrusts
   compressionRate: number; // Thrusts per minute
-  handPosition: 'correct' | 'too-high' | 'too-low';
+  handPosition: 'correct' | 'too-high' | 'too-low' | 'too-left' | 'too-right';
   recoilComplete: boolean; // Complete release between thrusts
   timestamp: number;
 }
@@ -73,10 +73,12 @@ export function generateRandomMetrics(): TrainingMetrics {
   const force = 60 + Math.random() * 60; // 60-120N (Heimlich force range)
   const rate = 90 + Math.random() * 40; // 90-130 thrusts per minute
 
-  let handPosition: 'correct' | 'too-high' | 'too-low';
+  let handPosition: 'correct' | 'too-high' | 'too-low' | 'too-left' | 'too-right';
   const rand = Math.random();
-  if (rand > 0.7) handPosition = 'too-high'; // Above ribcage
-  else if (rand < 0.15) handPosition = 'too-low'; // Below navel
+  if (rand > 0.8) handPosition = 'too-high'; // Above ribcage
+  else if (rand > 0.7) handPosition = 'too-low'; // Below navel
+  else if (rand > 0.6) handPosition = 'too-left'; // Left of center
+  else if (rand > 0.5) handPosition = 'too-right'; // Right of center
   else handPosition = 'correct'; // Just above navel, below ribcage
 
   return {
