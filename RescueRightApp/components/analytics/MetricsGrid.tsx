@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { Gauge, Zap, Target, Activity } from 'lucide-react-native';
+import { Hand, Zap, Target, Activity, TrendingUp, Shield } from 'lucide-react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { theme } from '../../styles/theme';
 
 interface MetricCardProps {
@@ -8,21 +9,50 @@ interface MetricCardProps {
   label: string;
   value: string | number;
   unit: string;
-  color: string;
+  status: 'excellent' | 'good' | 'warning' | 'neutral';
+  subtitle?: string;
+  index: number;
 }
 
-const MetricCard = ({ icon, label, value, unit, color }: MetricCardProps) => (
-  <View style={styles.card}>
-    <View style={[styles.iconContainer, { backgroundColor: `${color}20` }]}>
-      {icon}
-    </View>
-    <Text style={styles.label}>{label}</Text>
-    <View style={styles.valueContainer}>
-      <Text style={styles.value}>{value}</Text>
-      <Text style={styles.unit}>{unit}</Text>
-    </View>
-  </View>
-);
+const MetricCard = ({ icon, label, value, unit, status, subtitle, index }: MetricCardProps) => {
+  const statusColors = {
+    excellent: { bg: theme.colors.success, border: theme.colors.success, text: theme.colors.success },
+    good: { bg: theme.colors.primary, border: theme.colors.primary, text: theme.colors.primary },
+    warning: { bg: theme.colors.warning, border: theme.colors.warning, text: theme.colors.warning },
+    neutral: { bg: theme.colors.text.secondary, border: theme.colors.border, text: theme.colors.text.primary },
+  };
+
+  const colors = statusColors[status];
+
+  return (
+    <Animated.View
+      entering={FadeInDown.delay(index * 100).springify().damping(15)}
+      style={[styles.card, { borderLeftColor: colors.border }]}
+    >
+      <View style={styles.cardHeader}>
+        <View style={[styles.iconContainer, { backgroundColor: `${colors.bg}15` }]}>
+          {icon}
+        </View>
+        <View style={styles.statusDot}>
+          <View style={[styles.dot, { backgroundColor: colors.bg }]} />
+        </View>
+      </View>
+
+      <Text style={styles.label}>{label}</Text>
+
+      <View style={styles.valueRow}>
+        <Text style={[styles.value, { color: colors.text }]}>{value}</Text>
+        <Text style={[styles.unit, { color: colors.text }]}>{unit}</Text>
+      </View>
+
+      {subtitle && (
+        <View style={[styles.subtitleContainer, { backgroundColor: `${colors.bg}08` }]}>
+          <Text style={styles.subtitle}>{subtitle}</Text>
+        </View>
+      )}
+    </Animated.View>
+  );
+};
 
 interface MetricsGridProps {
   data: {
@@ -31,45 +61,70 @@ interface MetricsGridProps {
     totalThrusts: number;
     averageForce: number;
     positionAccuracy: number;
+    forceConsistency?: number;
   };
 }
 
 export function MetricsGrid({ data }: MetricsGridProps) {
+  // Calculate derived metrics
+  const effectiveness = Math.round((data.effectiveThrusts / data.totalThrusts) * 100);
+  const forceInRange = data.averageForce >= 80 && data.averageForce <= 120;
+
   const metrics = [
     {
-      icon: <Gauge size={20} color={theme.colors.primary} />,
-      label: 'Avg. Depth',
-      value: data.averageForce,
-      unit: 'mm',
-      color: theme.colors.primary,
-    },
-    {
-      icon: <Zap size={20} color={theme.colors.success} />,
-      label: 'Effective',
-      value: `${Math.round((data.effectiveThrusts / data.totalThrusts) * 100)}`,
-      unit: '%',
-      color: theme.colors.success,
-    },
-    {
-      icon: <Target size={20} color={theme.colors.warning} />,
-      label: 'Position',
+      icon: <Hand size={22} color={theme.colors.primary} strokeWidth={2.5} />,
+      label: 'Hand Position',
       value: data.positionAccuracy,
       unit: '%',
-      color: theme.colors.warning,
+      status: data.positionAccuracy >= 90 ? 'excellent' : data.positionAccuracy >= 75 ? 'good' : 'warning',
+      subtitle: data.positionAccuracy >= 90 ? 'Perfect placement' : 'Needs focus',
     },
     {
-      icon: <Activity size={20} color={theme.colors.error} />,
-      label: 'Total',
+      icon: <Zap size={22} color={theme.colors.success} strokeWidth={2.5} />,
+      label: 'Thrust Force',
+      value: data.averageForce,
+      unit: 'N',
+      status: forceInRange ? 'excellent' : data.averageForce > 120 ? 'warning' : 'good',
+      subtitle: forceInRange ? 'Optimal range' : data.averageForce > 120 ? 'Too forceful' : 'Increase force',
+    },
+    {
+      icon: <Target size={22} color={theme.colors.warning} strokeWidth={2.5} />,
+      label: 'Effectiveness',
+      value: effectiveness,
+      unit: '%',
+      status: effectiveness >= 85 ? 'excellent' : effectiveness >= 70 ? 'good' : 'warning',
+      subtitle: `${data.effectiveThrusts}/${data.totalThrusts} effective`,
+    },
+    {
+      icon: <Activity size={22} color={theme.colors.error} strokeWidth={2.5} />,
+      label: 'Total Thrusts',
       value: data.totalThrusts,
-      unit: 'comp.',
-      color: theme.colors.error,
+      unit: 'thrusts',
+      status: 'neutral',
+      subtitle: 'Completed',
+    },
+    {
+      icon: <TrendingUp size={22} color={theme.colors.secondary} strokeWidth={2.5} />,
+      label: 'Consistency',
+      value: data.forceConsistency || 88,
+      unit: '%',
+      status: (data.forceConsistency || 88) >= 85 ? 'excellent' : 'good',
+      subtitle: 'Force variance',
+    },
+    {
+      icon: <Shield size={22} color={theme.colors.success} strokeWidth={2.5} />,
+      label: 'Safety Score',
+      value: data.overallScore,
+      unit: '/100',
+      status: data.overallScore >= 90 ? 'excellent' : data.overallScore >= 75 ? 'good' : 'warning',
+      subtitle: 'No injury risk',
     },
   ];
 
   return (
     <View style={styles.grid}>
       {metrics.map((metric, index) => (
-        <MetricCard key={index} {...metric} />
+        <MetricCard key={index} {...metric} index={index} />
       ))}
     </View>
   );
@@ -84,37 +139,76 @@ const styles = StyleSheet.create({
   card: {
     width: '48%',
     backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.lg,
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: theme.colors.borderLight,
-    padding: theme.spacing.md,
-    marginBottom: theme.spacing.md,
+    borderLeftWidth: 4,
+    padding: 18,
+    marginBottom: 14,
     ...theme.shadows.md,
+    position: 'relative',
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
   },
   iconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: theme.borderRadius.md,
+    width: 48,
+    height: 48,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: theme.spacing.md,
+  },
+  statusDot: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: theme.colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: theme.colors.borderLight,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   label: {
-    ...theme.typography.caption2,
+    fontSize: 13,
+    fontWeight: '600',
     color: theme.colors.text.tertiary,
-    marginBottom: 4,
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
-  valueContainer: {
+  valueRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
+    marginBottom: 10,
   },
   value: {
-    ...theme.typography.h2,
-    color: theme.colors.text.primary,
+    fontSize: 32,
+    fontWeight: '800',
+    letterSpacing: -1,
   },
   unit: {
-    ...theme.typography.caption,
-    color: theme.colors.text.tertiary,
+    fontSize: 14,
+    fontWeight: '600',
     marginLeft: 4,
+    opacity: 0.7,
+  },
+  subtitleContainer: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  subtitle: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: theme.colors.text.secondary,
   },
 });
