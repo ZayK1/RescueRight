@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusHeader } from '../components/training/StatusHeader';
@@ -7,21 +7,8 @@ import { ForceGauge } from '../components/training/ForceGauge';
 import { FeedbackCard } from '../components/training/FeedbackCard';
 import { MetricsStrip } from '../components/training/MetricsStrip';
 import { DevBypassButton } from '../components/shared/DevBypassButton';
-import { useTrainingData } from '../hooks/useTrainingData';
+import { useBluetoothTrainingData } from '../hooks/useBluetoothTrainingData';
 import { theme } from '../styles/theme';
-
-// Function to generate feedback based on metrics for Heimlich maneuver
-const getFeedback = (metrics: any) => {
-  const { compressionDepth, compressionRate, handPosition, recoilComplete } = metrics;
-  // Heimlich maneuver feedback - force range 80-120N optimal
-  if (compressionDepth < 40) return "Apply more force. Aim for quick, upward thrusts.";
-  if (compressionDepth > 70) return "Too forceful. Risk of injury - reduce force.";
-  if (compressionRate < 90) return "Increase thrust frequency. Aim for sustained rhythm.";
-  if (compressionRate > 130) return "Too fast. Maintain controlled, deliberate thrusts.";
-  if (handPosition !== 'correct') return "Adjust hand position to just above navel, below ribcage.";
-  if (!recoilComplete) return "Release completely between thrusts. Allow chest to expand.";
-  return "Excellent Heimlich technique. Maintain this form!";
-};
 
 const getFeedbackType = (feedback: string): 'success' | 'info' | 'error' => {
   if (feedback.startsWith("Excellent")) return 'success';
@@ -31,14 +18,31 @@ const getFeedbackType = (feedback: string): 'success' | 'info' | 'error' => {
 
 export default function TrainingScreen() {
   const router = useRouter();
-  // Correctly use the data from the hook
-  const { metrics, duration, compressions } = useTrainingData();
+  // Use the real bluetooth data hook
+  const data = useBluetoothTrainingData(false);
+
+  // Add a local timer since the hook doesn't provide it
+  const [duration, setDuration] = useState(0);
+  useEffect(() => {
+    if (data.isConnected) {
+      const timer = setInterval(() => {
+        setDuration(prev => prev + 1);
+      }, 1000);
+      return () => clearInterval(timer);
+    }
+  }, [data.isConnected]);
+
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
+    const secs = (seconds % 60).toString().padStart(2, '0');
+    return `${mins}:${secs}`;
+  };
 
   const handleComplete = () => {
     router.push('/analytics');
   };
 
-  const feedbackMessage = getFeedback(metrics);
+  const feedbackMessage = data.feedback || "Waiting for vest data...";
   const feedbackType = getFeedbackType(feedbackMessage);
 
   // Define target range for Heimlich thrust force
@@ -47,15 +51,15 @@ export default function TrainingScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusHeader isConnected={true} batteryLevel={87} duration={duration} />
+      <StatusHeader isConnected={data.isConnected} batteryLevel={87} duration={formatDuration(duration)} />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.module}>
           <Text style={styles.moduleTitle}>Hand Position</Text>
-          <HeatmapModule position={metrics.handPosition} force={metrics.compressionDepth} />
+          <HeatmapModule position={data.handPosition} force={data.compressionDepth} />
         </View>
         <View style={styles.module}>
           <Text style={styles.moduleTitle}>Thrust Force</Text>
-          <ForceGauge force={metrics.compressionDepth} targetMin={targetMin} targetMax={targetMax} />
+          <ForceGauge force={data.compressionDepth} targetMin={targetMin} targetMax={targetMax} />
         </View>
         <View style={styles.module}>
           <Text style={styles.moduleTitle}>Live Feedback</Text>
@@ -65,7 +69,7 @@ export default function TrainingScreen() {
           <Text style={styles.completeButtonText}>Complete Session</Text>
         </TouchableOpacity>
       </ScrollView>
-      <MetricsStrip thrusts={compressions} avgForce={metrics.compressionDepth} accuracy={metrics.compressionRate} />
+      <MetricsStrip thrusts={data.thrusts} avgForce={data.compressionDepth} accuracy={data.compressionRate} />
       <DevBypassButton nextScreen="analytics" />
     </View>
   );

@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, Text } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, ScrollView, Text, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Device } from 'react-native-ble-plx';
 import { PairingNavigation } from '../components/connect/PairingNavigation';
 import { VestIllustration } from '../components/connect/VestIllustration';
 import { ConnectionStates } from '../components/connect/ConnectionStates';
@@ -8,29 +9,61 @@ import { ConnectingModal } from '../components/connect/ConnectingModal';
 import { ManualPairing } from '../components/connect/ManualPairing';
 import { HelpSection } from '../components/connect/HelpSection';
 import { DevBypassButton } from '../components/shared/DevBypassButton';
-import { mockDevices } from '../lib/mockData';
+import { bluetoothManager } from '../lib/bluetooth';
 import { theme } from '../styles/theme';
 
 export default function ConnectScreen() {
   const router = useRouter();
   const [isConnecting, setIsConnecting] = useState(false);
-  const [selectedDevice, setSelectedDevice] = useState<string | null>(null);
+  const [isScanning, setIsScanning] = useState(true);
+  const [devices, setDevices] = useState<Device[]>([]);
+  const [selectedDeviceName, setSelectedDeviceName] = useState<string | null>(null);
 
-  const handleDeviceSelect = (deviceId: string) => {
-    setSelectedDevice(deviceId);
+  useEffect(() => {
+    const startScan = async () => {
+      setIsScanning(true);
+      setDevices([]);
+      try {
+        await bluetoothManager.requestPermissions();
+        await bluetoothManager.scanForDevices((device) => {
+          if (device && device.name?.includes('RescueRight')) {
+            setDevices((prev) => {
+              if (!prev.find((d) => d.id === device.id)) {
+                return [...prev, device];
+              }
+              return prev;
+            });
+          }
+        }, 5000); // Scan for 5 seconds
+      } catch (e) {
+        Alert.alert("Bluetooth Error", "Please ensure Bluetooth is enabled and permissions are granted.");
+      } finally {
+        setIsScanning(false);
+      }
+    };
+
+    startScan();
+
+    return () => {
+      bluetoothManager.stopScan();
+    };
+  }, []);
+
+  const handleDeviceSelect = async (deviceId: string) => {
+    const device = devices.find(d => d.id === deviceId);
+    if (!device) return;
+
     setIsConnecting(true);
-  };
+    setSelectedDeviceName(device.name);
 
-  const handleConnectionSuccess = () => {
+    const connected = await bluetoothManager.connect(deviceId);
+
     setIsConnecting(false);
-    setTimeout(() => {
+    if (connected) {
       router.push('/training');
-    }, 500);
-  };
-
-  const handleConnectionCancel = () => {
-    setIsConnecting(false);
-    setSelectedDevice(null);
+    } else {
+      Alert.alert('Connection Failed', 'Could not connect to the device. Please try again.');
+    }
   };
 
   const handleBack = () => {
@@ -50,8 +83,9 @@ export default function ConnectScreen() {
         </View>
         <View style={styles.connectionSection}>
           <ConnectionStates
-            devices={mockDevices}
+            devices={devices}
             onDeviceSelect={handleDeviceSelect}
+            isScanning={isScanning}
           />
           <ManualPairing />
           <HelpSection />
@@ -59,8 +93,12 @@ export default function ConnectScreen() {
       </ScrollView>
       <ConnectingModal
         isVisible={isConnecting}
-        onCancel={handleConnectionCancel}
-        onSuccess={handleConnectionSuccess}
+        deviceName={selectedDeviceName || ''}
+        onCancel={() => {
+          setIsConnecting(false);
+          bluetoothManager.disconnect();
+        }}
+        onSuccess={() => {}} // Not used in the real flow
       />
       <DevBypassButton nextScreen="training" />
     </View>
