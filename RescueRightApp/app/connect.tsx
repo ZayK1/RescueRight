@@ -59,8 +59,12 @@ export default function ConnectScreen() {
     const connected = await bluetoothManager.connect(deviceId);
 
     setIsConnecting(false);
+
     if (connected) {
-      router.push('/training');
+      // Add small delay to ensure navigation is ready
+      setTimeout(() => {
+        router.push('/training');
+      }, 300);
     } else {
       Alert.alert('Connection Failed', 'Could not connect to the device. Please try again.');
     }

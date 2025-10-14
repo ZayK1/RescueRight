@@ -1,110 +1,114 @@
 import { useEffect, useState } from 'react';
-import { Bluetooth, X } from 'lucide-react';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, ActivityIndicator } from 'react-native';
 
 interface ConnectingModalProps {
   isVisible: boolean;
+  deviceName: string;
   onCancel: () => void;
   onSuccess: () => void;
 }
 
-export function ConnectingModal({ isVisible, onCancel, onSuccess }: ConnectingModalProps) {
-  const [progress, setProgress] = useState(0);
+export function ConnectingModal({ isVisible, deviceName, onCancel }: ConnectingModalProps) {
+  const [dots, setDots] = useState('');
 
   useEffect(() => {
     if (isVisible) {
       const interval = setInterval(() => {
-        setProgress(prev => {
-          if (prev >= 100) {
-            clearInterval(interval);
-            setTimeout(onSuccess, 500);
-            return 100;
-          }
-          return prev + 2;
-        });
-      }, 50);
+        setDots(prev => (prev.length >= 3 ? '' : prev + '.'));
+      }, 500);
 
       return () => clearInterval(interval);
     }
-  }, [isVisible, onSuccess]);
-
-  if (!isVisible) return null;
+  }, [isVisible]);
 
   return (
-    <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{
-        background: 'rgba(0, 0, 0, 0.4)',
-        backdropFilter: 'blur(20px)'
-      }}
-      onClick={onCancel}
+    <Modal
+      visible={isVisible}
+      transparent
+      animationType="fade"
+      onRequestClose={onCancel}
     >
-      <div 
-        className="rounded-3xl relative animate-modal-appear"
-        style={{
-          width: '300px',
-          minHeight: '200px',
-          background: 'linear-gradient(135deg, #ffffff 0%, #fafbfc 100%)',
-          boxShadow: '0px 16px 48px rgba(0, 0, 0, 0.3), 0px 4px 16px rgba(0, 0, 0, 0.2)',
-          padding: '32px'
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex flex-col items-center justify-center h-full">
-          {/* Pulsing Bluetooth Icon */}
-          <div 
-            className="mb-6 rounded-full flex items-center justify-center animate-pulse-scale"
-            style={{
-              width: '64px',
-              height: '64px',
-              background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(59, 130, 246, 0.05) 100%)'
-            }}
-          >
-            <Bluetooth size={32} style={{ color: '#3B82F6' }} />
-          </div>
+      <View style={styles.overlay}>
+        <View style={styles.modal}>
+          {/* Bluetooth Icon Representation */}
+          <View style={styles.iconContainer}>
+            <ActivityIndicator size="large" color="#3B82F6" />
+          </View>
 
           {/* Connecting Text */}
-          <h3 
-            className="mb-4 text-center"
-            style={{
-              fontSize: '17px',
-              fontWeight: '600',
-              color: '#1F2937'
-            }}
-          >
-            Connecting to vest...
-          </h3>
+          <Text style={styles.title}>
+            Connecting{dots}
+          </Text>
 
-          {/* Progress Bar */}
-          <div 
-            className="w-full mb-4 rounded-full overflow-hidden"
-            style={{
-              height: '4px',
-              background: '#E5E7EB'
-            }}
-          >
-            <div 
-              className="h-full rounded-full transition-all duration-100 ease-out"
-              style={{
-                width: `${progress}%`,
-                background: 'linear-gradient(90deg, #3B82F6 0%, #2563EB 100%)'
-              }}
-            />
-          </div>
+          {deviceName && (
+            <Text style={styles.deviceName}>
+              {deviceName}
+            </Text>
+          )}
 
           {/* Cancel Button */}
-          <button 
-            onClick={onCancel}
-            className="active:scale-95 transition-transform duration-150"
-            style={{
-              fontSize: '15px',
-              fontWeight: '400',
-              color: '#3B82F6'
-            }}
+          <TouchableOpacity
+            onPress={onCancel}
+            style={styles.cancelButton}
           >
-            Cancel
-          </button>
-        </div>
-      </div>
-    </div>
+            <Text style={styles.cancelButtonText}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
   );
 }
+
+const styles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modal: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 32,
+    width: '100%',
+    maxWidth: 300,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  iconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  deviceName: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 24,
+    textAlign: 'center',
+  },
+  cancelButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#3B82F6',
+  },
+});
