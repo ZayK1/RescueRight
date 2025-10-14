@@ -169,8 +169,8 @@ export function useBluetoothTrainingData(useMockData: boolean = false) {
               updated.angle = filteredAngle;
             }
 
-            // === DIAGNOSTIC LOGGING (every 50 samples) ===
-            if (totalDataCountRef.current % 50 === 0) {
+            // === DIAGNOSTIC LOGGING (every 100 samples = ~10 seconds) ===
+            if (totalDataCountRef.current % 100 === 0) {
               console.log('[Sensor Data]', {
                 sampleCount: totalDataCountRef.current,
                 invalidCount: invalidDataCountRef.current,

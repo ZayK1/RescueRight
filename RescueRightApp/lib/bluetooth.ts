@@ -282,22 +282,47 @@ class BluetoothManager {
    */
   async subscribeToAllSensors(callback: (data: Partial<SensorData>) => void): Promise<void> {
     const sensorData: Partial<SensorData> = {};
+    let lastLogTime = 0;
 
     await this.subscribeToForce((force) => {
       sensorData.force = force;
       sensorData.timestamp = Date.now();
+
+      // Throttled logging (every 2 seconds)
+      const now = Date.now();
+      if (now - lastLogTime > 2000) {
+        console.log('[BLE] Force received:', force.toFixed(1), 'N');
+        lastLogTime = now;
+      }
+
       callback({ ...sensorData });
     });
 
     await this.subscribeToPosition((x, y) => {
       sensorData.position = { x, y };
       sensorData.timestamp = Date.now();
+
+      // Throttled logging (every 2 seconds)
+      const now = Date.now();
+      if (now - lastLogTime > 2000) {
+        console.log('[BLE] Position received:', x.toFixed(2), y.toFixed(2));
+        lastLogTime = now;
+      }
+
       callback({ ...sensorData });
     });
 
     await this.subscribeToAngle((angle) => {
       sensorData.angle = angle;
       sensorData.timestamp = Date.now();
+
+      // Throttled logging (every 2 seconds)
+      const now = Date.now();
+      if (now - lastLogTime > 2000) {
+        console.log('[BLE] Angle received:', angle.toFixed(1), '°');
+        lastLogTime = now;
+      }
+
       callback({ ...sensorData });
     });
   }

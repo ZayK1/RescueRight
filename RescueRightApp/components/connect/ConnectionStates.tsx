@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Bluetooth, Check, ChevronRight } from 'lucide-react-native';
+import { Device } from 'react-native-ble-plx';
 import { theme } from '../../styles/theme';
-import { BluetoothDevice } from '../../lib/mockData'; // Using mock data as per the roadmap
 
 interface ConnectionStatesProps {
-  devices: BluetoothDevice[];
+  devices: Device[];
   onDeviceSelect: (deviceId: string) => void;
+  isScanning?: boolean;
 }
 
-const DeviceItem = ({ device, onDeviceSelect, isSelected }: { device: BluetoothDevice, onDeviceSelect: (id: string) => void, isSelected: boolean }) => {
+const DeviceItem = ({ device, onDeviceSelect, isSelected }: { device: Device, onDeviceSelect: (id: string) => void, isSelected: boolean }) => {
   return (
     <TouchableOpacity
       style={[styles.deviceCard, isSelected && styles.selectedCard]}
@@ -22,8 +23,8 @@ const DeviceItem = ({ device, onDeviceSelect, isSelected }: { device: BluetoothD
         </View>
 
         <View style={{ flex: 1 }}>
-          <Text style={styles.deviceName}>{device.name}</Text>
-          <Text style={styles.deviceRssi}>RSSI: {device.rssi} dBm</Text>
+          <Text style={styles.deviceName}>{device.name || 'Unknown Device'}</Text>
+          <Text style={styles.deviceRssi}>RSSI: {device.rssi || 0} dBm</Text>
         </View>
 
         <View style={{ marginLeft: 16 }}>

@@ -73,12 +73,6 @@ export default function AnalyticsScreen() {
     return Math.round(Math.min(100, score));
   };
 
-  const formatDuration = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
-  };
-
   const generateFeedback = () => {
     if (!sessionData) return [];
 
@@ -148,7 +142,7 @@ export default function AnalyticsScreen() {
 
   const analyticsData = sessionData ? {
     overallScore: calculateScore(),
-    duration: formatDuration(sessionData.duration),
+    duration: sessionData.duration,
     totalThrusts: sessionData.totalThrusts,
     effectiveThrusts: Math.round(sessionData.totalThrusts * (sessionData.positionAccuracy / 100)),
     averageForce: parseFloat(sessionData.averageForce.toFixed(1)),
@@ -158,7 +152,7 @@ export default function AnalyticsScreen() {
     feedback: generateFeedback()
   } : {
     overallScore: 0,
-    duration: '0s',
+    duration: 0,
     totalThrusts: 0,
     effectiveThrusts: 0,
     averageForce: 0,

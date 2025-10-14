@@ -24,6 +24,7 @@ export interface ThrustData {
 
 class SessionStorage {
   private currentSession: Partial<SessionData> | null = null;
+  private lastCompletedSession: SessionData | null = null;
   private thrustHistory: ThrustData[] = [];
   private startTime: number = 0;
   private forceSum: number = 0;
@@ -150,15 +151,24 @@ class SessionStorage {
       accuracy: `${finalSession.positionAccuracy}%`,
     });
 
+    // Save as last completed session for analytics
+    this.lastCompletedSession = finalSession;
     this.currentSession = null;
     return finalSession;
   }
 
   /**
-   * Get the current session data
+   * Get the current session data (or last completed if none active)
    */
-  getCurrentSession(): Partial<SessionData> | null {
-    return this.currentSession;
+  getCurrentSession(): Partial<SessionData> | SessionData | null {
+    return this.currentSession || this.lastCompletedSession;
+  }
+
+  /**
+   * Get the last completed session
+   */
+  getLastCompletedSession(): SessionData | null {
+    return this.lastCompletedSession;
   }
 
   /**
