@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Animated, { useAnimatedStyle, withSpring, useSharedValue, withRepeat, withSequence, interpolate } from 'react-native-reanimated';
 import { Activity, ArrowDown, ArrowUp, ArrowLeft, ArrowRight } from 'lucide-react-native';
@@ -16,6 +16,49 @@ export function HeatmapModule({ position, force }: HeatmapModuleProps) {
   const scale = useSharedValue(1);
   const pulseAnim = useSharedValue(0);
 
+  // Peak hold state for position and force
+  const [displayedPosition, setDisplayedPosition] = useState<typeof position>(position);
+  const [displayedForce, setDisplayedForce] = useState(0);
+  const decayTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastUpdateTimeRef = useRef<number>(Date.now());
+
+  // Peak-hold mechanism: update displayed values immediately, then decay after hold time
+  useEffect(() => {
+    const now = Date.now();
+
+    // If force is detected, update immediately
+    if (force > 0) {
+      setDisplayedPosition(position);
+      setDisplayedForce(force);
+      lastUpdateTimeRef.current = now;
+
+      // Clear any existing decay timer
+      if (decayTimeoutRef.current) {
+        clearTimeout(decayTimeoutRef.current);
+        decayTimeoutRef.current = null;
+      }
+    } else {
+      // Force is 0 - start decay to 'correct' position after 1 second hold
+      const timeSinceLastUpdate = now - lastUpdateTimeRef.current;
+
+      if (timeSinceLastUpdate > 1000 && !decayTimeoutRef.current) {
+        // Gradually return to center position after 1 second
+        decayTimeoutRef.current = setTimeout(() => {
+          setDisplayedPosition('correct');
+          setDisplayedForce(0);
+          decayTimeoutRef.current = null;
+        }, 800); // Additional 800ms before resetting
+      }
+    }
+
+    return () => {
+      if (decayTimeoutRef.current) {
+        clearTimeout(decayTimeoutRef.current);
+      }
+    };
+  }, [force, position]);
+
+  // Animate based on displayed position (not raw position)
   useEffect(() => {
     const positionOffsets = {
       'too-high': { x: 0, y: -55 },
@@ -25,7 +68,7 @@ export function HeatmapModule({ position, force }: HeatmapModuleProps) {
       'correct': { x: 0, y: 0 },
     };
 
-    const offset = positionOffsets[position] || { x: 0, y: 0 };
+    const offset = positionOffsets[displayedPosition] || { x: 0, y: 0 };
 
     offsetY.value = withSpring(offset.y, {
       damping: 20,
@@ -38,7 +81,7 @@ export function HeatmapModule({ position, force }: HeatmapModuleProps) {
     });
 
     // Scale effect for correct positioning with gentle pulse
-    if (position === 'correct') {
+    if (displayedPosition === 'correct') {
       scale.value = withSpring(1, {
         damping: 15,
         stiffness: 100,
@@ -60,7 +103,7 @@ export function HeatmapModule({ position, force }: HeatmapModuleProps) {
       });
       pulseAnim.value = withSpring(0, { damping: 10, stiffness: 80 });
     }
-  }, [position, force]);
+  }, [displayedPosition]);
 
   const handAnimatedStyle = useAnimatedStyle(() => ({
     transform: [
@@ -80,13 +123,13 @@ export function HeatmapModule({ position, force }: HeatmapModuleProps) {
     };
   });
 
-  const isCorrect = position === 'correct';
+  const isCorrect = displayedPosition === 'correct';
   const handColor = isCorrect ? theme.colors.success : theme.colors.warning;
   const handStrokeColor = isCorrect ? '#059669' : '#D97706';
 
   const getAccuracy = () => {
-    if (position === 'correct' && force >= 80 && force <= 120) return 98;
-    if (position === 'correct') return 85;
+    if (displayedPosition === 'correct' && displayedForce >= 80 && displayedForce <= 120) return 98;
+    if (displayedPosition === 'correct') return 85;
     return 65;
   };
 
@@ -95,7 +138,7 @@ export function HeatmapModule({ position, force }: HeatmapModuleProps) {
     const iconSize = 24;
     const iconStroke = 3;
 
-    switch (position) {
+    switch (displayedPosition) {
       case 'too-high':
         return (
           <View style={[styles.directionArrow, styles.arrowAbove]}>
@@ -264,11 +307,11 @@ export function HeatmapModule({ position, force }: HeatmapModuleProps) {
       {/* Metrics Row */}
       <View style={styles.metricsRow}>
         <View style={[styles.metric, styles.metricPurple]}>
-          <Text style={styles.metricValue}>{position === 'correct' ? '✓' : '⚠'}</Text>
+          <Text style={styles.metricValue}>{displayedPosition === 'correct' ? '✓' : '⚠'}</Text>
           <Text style={styles.metricLabel}>Position</Text>
         </View>
         <View style={[styles.metric, styles.metricGreen]}>
-          <Text style={styles.metricValue}>{Math.round(force)}N</Text>
+          <Text style={styles.metricValue}>{Math.round(displayedForce)}N</Text>
           <Text style={styles.metricLabel}>Force</Text>
         </View>
         <View style={[styles.metric, styles.metricOrange]}>

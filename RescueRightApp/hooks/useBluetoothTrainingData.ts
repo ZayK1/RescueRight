@@ -46,8 +46,6 @@ export function useBluetoothTrainingData(useMockData: boolean = false) {
   const lastForceRef = useRef(0);
   const forceHistoryRef = useRef<number[]>([]);
   const lastThrustTimeRef = useRef(0);
-  const lingeringForceRef = useRef(0);
-  const decayTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Data filtering
   const forceFilterRef = useRef(new EMAFilter(0.3)); // Smooth force readings
@@ -127,23 +125,8 @@ export function useBluetoothTrainingData(useMockData: boolean = false) {
 
             // === UPDATE STATE ===
             if (sensorData.force !== undefined) {
-              // --- LINGERING FORCE LOGIC ---
-              if (decayTimerRef.current) {
-                clearTimeout(decayTimerRef.current);
-                decayTimerRef.current = null;
-              }
-
-              if (filteredForce > 5) { // Use a small threshold to ignore noise
-                lingeringForceRef.current = filteredForce;
-              } else {
-                decayTimerRef.current = setTimeout(() => {
-                  lingeringForceRef.current = 0;
-                  // We need to trigger a re-render manually if the component isn't already re-rendering
-                  setData(prev => ({...prev, compressionDepth: 0}));
-                }, 1500); // Linger for 1.5 seconds
-              }
-              
-              updated.compressionDepth = lingeringForceRef.current;
+              // Pass the filtered force directly to UI - let UI components handle peak-hold/decay
+              updated.compressionDepth = filteredForce;
               updated.rawForce = rawForce; // For debugging
               updated.filteredForce = filteredForce; // For debugging
 
