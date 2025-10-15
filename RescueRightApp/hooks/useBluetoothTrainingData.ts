@@ -118,7 +118,7 @@ export function useBluetoothTrainingData(useMockData: boolean = false) {
             }
 
             // === DATA FILTERING ===
-            const filteredForce = forceFilterRef.current.filter(rawForce);
+            const filteredForce = forceFilterRef.current.filter(rawForce) * 0.25;
             const filteredPositionX = positionXFilterRef.current.filter(rawPosition.x);
             const filteredPositionY = positionYFilterRef.current.filter(rawPosition.y);
             const filteredAngle = angleFilterRef.current.filter(rawAngle);
@@ -210,7 +210,7 @@ export function useBluetoothTrainingData(useMockData: boolean = false) {
    * Detect if a thrust occurred based on force spike
    */
   const detectThrust = (currentForce: number): boolean => {
-    const threshold = 10; // Minimum force in Newtons (lowered for calibration)
+    const threshold = 2.5; // Minimum force in Newtons (lowered for calibration)
     const cooldown = 400; // Minimum time between thrusts (ms)
 
     const now = Date.now();
@@ -256,7 +256,7 @@ export function useBluetoothTrainingData(useMockData: boolean = false) {
     angle: number
   ): string => {
     // Adjusted thresholds for current calibration
-    const targetForce = { min: 20, max: 60 };
+    const targetForce = { min: 5, max: 15 };
     const targetPosition = { x: 0.5, y: 0.45 };
 
     // No force - waiting for thrust
