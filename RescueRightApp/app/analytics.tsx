@@ -5,7 +5,7 @@ import { SessionNavigation } from '../components/analytics/SessionNavigation';
 import { HeroSuccessCard } from '../components/analytics/HeroSuccessCard';
 import { MetricsGrid } from '../components/analytics/MetricsGrid';
 import { TechniqueAnalysis } from '../components/analytics/TechniqueAnalysis';
-import { DevBypassButton } from '../components/shared/DevBypassButton';
+
 import { sessionStorage, SessionData } from '../lib/sessionStorage';
 import { theme } from '../styles/theme';
 
@@ -224,7 +224,11 @@ export default function AnalyticsScreen() {
 
   return (
     <View style={styles.container}>
-      <SessionNavigation onBack={handleDone} />
+      <SessionNavigation
+        onBack={handleDone}
+        showBypass={true}
+        onBypass={() => router.push('/')}
+      />
 
       <ScrollView
         contentContainerStyle={styles.content}
@@ -283,7 +287,7 @@ export default function AnalyticsScreen() {
         </View>
       </ScrollView>
 
-      <DevBypassButton nextScreen="index" />
+      
     </View>
   );
 }

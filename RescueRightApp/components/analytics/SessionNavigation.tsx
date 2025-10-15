@@ -1,14 +1,18 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { ChevronLeft, MoreHorizontal } from 'lucide-react-native';
+import { ChevronLeft, MoreHorizontal, ArrowRight } from 'lucide-react-native';
 import { theme } from '../../styles/theme';
 
 interface SessionNavigationProps {
   onBack?: () => void;
   onMore?: () => void;
+  showBypass?: boolean;
+  onBypass?: () => void;
 }
 
-export function SessionNavigation({ onBack, onMore }: SessionNavigationProps) {
+export function SessionNavigation({ onBack, onMore, showBypass, onBypass }: SessionNavigationProps) {
+  const shouldShowBypass = showBypass && __DEV__;
+
   return (
     <View style={styles.container}>
       <View style={styles.statusBarSpacer} />
@@ -25,9 +29,15 @@ export function SessionNavigation({ onBack, onMore }: SessionNavigationProps) {
           </View>
         </View>
 
-        <TouchableOpacity onPress={onMore} style={styles.button} activeOpacity={0.7}>
-          <MoreHorizontal size={16} strokeWidth={2.5} color={theme.colors.text.primary} />
-        </TouchableOpacity>
+        {shouldShowBypass ? (
+          <TouchableOpacity onPress={onBypass} style={styles.button} activeOpacity={0.7}>
+            <ArrowRight size={16} strokeWidth={2.5} color={theme.colors.text.primary} />
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity onPress={onMore} style={styles.button} activeOpacity={0.7}>
+            <MoreHorizontal size={16} strokeWidth={2.5} color={theme.colors.text.primary} />
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
