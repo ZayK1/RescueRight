@@ -296,7 +296,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   statLabel: {
-    fontSize: 11,
+    fontSize: 9,
     fontWeight: '600',
     color: theme.colors.text.tertiary,
     marginBottom: 2,
