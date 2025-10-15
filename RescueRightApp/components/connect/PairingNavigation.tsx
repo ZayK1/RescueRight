@@ -1,13 +1,17 @@
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { HelpCircle } from 'lucide-react-native';
+import { HelpCircle, ArrowRight } from 'lucide-react-native';
 import { theme } from '../../styles/theme';
 
 interface PairingNavigationProps {
   onBack?: () => void;
   onHelp?: () => void;
+  showBypass?: boolean;
+  onBypass?: () => void;
 }
 
-export function PairingNavigation({ onBack, onHelp }: PairingNavigationProps) {
+export function PairingNavigation({ onBack, onHelp, showBypass, onBypass }: PairingNavigationProps) {
+  const shouldShowBypass = showBypass && __DEV__;
+
   return (
     <View style={styles.container}>
       <View style={styles.navBar}>
@@ -22,14 +26,24 @@ export function PairingNavigation({ onBack, onHelp }: PairingNavigationProps) {
         {/* Empty center for clean layout */}
         <View />
 
-        {/* Help Button */}
-        <TouchableOpacity
-          onPress={onHelp}
-          style={styles.helpButton}
-          activeOpacity={0.7}
-        >
-          <HelpCircle size={24} strokeWidth={1.5} color={theme.colors.primary} />
-        </TouchableOpacity>
+        {/* Help or Bypass Button */}
+        {shouldShowBypass ? (
+          <TouchableOpacity
+            onPress={onBypass}
+            style={styles.helpButton}
+            activeOpacity={0.7}
+          >
+            <ArrowRight size={24} strokeWidth={1.5} color={theme.colors.primary} />
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            onPress={onHelp}
+            style={styles.helpButton}
+            activeOpacity={0.7}
+          >
+            <HelpCircle size={24} strokeWidth={1.5} color={theme.colors.primary} />
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
@@ -37,14 +51,9 @@ export function PairingNavigation({ onBack, onHelp }: PairingNavigationProps) {
 
 const styles = StyleSheet.create({
   container: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 50,
-    backgroundColor: 'rgba(255, 255, 255, 0.92)',
+    backgroundColor: theme.colors.background,
     borderBottomWidth: 0.5,
-    borderBottomColor: 'rgba(0, 0, 0, 0.08)',
+    borderBottomColor: theme.colors.border,
     paddingTop: 59, // Approximation for safe area
     height: 103,
   },

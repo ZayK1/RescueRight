@@ -5,7 +5,7 @@ import { StatusHeader } from '../components/training/StatusHeader';
 import { HeatmapModule } from '../components/training/HeatmapModule';
 import { ForceGauge } from '../components/training/ForceGauge';
 import { FeedbackCard } from '../components/training/FeedbackCard';
-import { DevBypassButton } from '../components/shared/DevBypassButton';
+
 import { useBluetoothTrainingData } from '../hooks/useBluetoothTrainingData';
 import { sessionStorage } from '../lib/sessionStorage';
 import { theme } from '../styles/theme';
@@ -97,7 +97,13 @@ export default function TrainingScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusHeader isConnected={data.isConnected} batteryLevel={87} duration={duration} />
+      <StatusHeader
+        isConnected={data.isConnected}
+        batteryLevel={87}
+        duration={duration}
+        showBypass={true}
+        onBypass={() => router.push('/analytics')}
+      />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.module}>
           <Text style={styles.moduleTitle}>Hand Position</Text>
@@ -134,7 +140,7 @@ export default function TrainingScreen() {
         </View>
       </View>
 
-      <DevBypassButton nextScreen="analytics" />
+      
     </View>
   );
 }

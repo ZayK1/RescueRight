@@ -1,15 +1,19 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Bluetooth, Info } from 'lucide-react-native';
+import { Bluetooth, Info, ArrowRight } from 'lucide-react-native';
 import { theme } from '../../styles/theme';
 
 interface StatusHeaderProps {
   isConnected: boolean;
   batteryLevel: number;
   duration: number;
+  showBypass?: boolean;
+  onBypass?: () => void;
 }
 
-export function StatusHeader({ isConnected, batteryLevel, duration }: StatusHeaderProps) {
+export function StatusHeader({ isConnected, batteryLevel, duration, showBypass, onBypass }: StatusHeaderProps) {
+  const shouldShowBypass = showBypass && __DEV__;
+
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
     const secs = (seconds % 60).toString().padStart(2, '0');
@@ -34,13 +38,23 @@ export function StatusHeader({ isConnected, batteryLevel, duration }: StatusHead
             {formatDuration(duration)}
           </Text>
 
-          {/* Info Button */}
-          <TouchableOpacity
-            style={styles.infoButton}
-            activeOpacity={0.7}
-          >
-            <Info size={16} color="rgba(255, 255, 255, 0.9)" strokeWidth={2.5} />
-          </TouchableOpacity>
+          {/* Info or Bypass Button */}
+          {shouldShowBypass ? (
+            <TouchableOpacity
+              style={styles.infoButton}
+              activeOpacity={0.7}
+              onPress={onBypass}
+            >
+              <ArrowRight size={16} color="rgba(255, 255, 255, 0.9)" strokeWidth={2.5} />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={styles.infoButton}
+              activeOpacity={0.7}
+            >
+              <Info size={16} color="rgba(255, 255, 255, 0.9)" strokeWidth={2.5} />
+            </TouchableOpacity>
+          )}
         </View>
       </View>
     </View>

@@ -8,7 +8,7 @@ import { ConnectionStates } from '../components/connect/ConnectionStates';
 import { ConnectingModal } from '../components/connect/ConnectingModal';
 import { ManualPairing } from '../components/connect/ManualPairing';
 import { HelpSection } from '../components/connect/HelpSection';
-import { DevBypassButton } from '../components/shared/DevBypassButton';
+
 import { bluetoothManager } from '../lib/bluetooth';
 import { theme } from '../styles/theme';
 
@@ -76,8 +76,15 @@ export default function ConnectScreen() {
 
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <PairingNavigation onBack={handleBack} />
+      <PairingNavigation
+        onBack={handleBack}
+        showBypass={true}
+        onBypass={() => router.push('/training')}
+      />
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        style={styles.scrollView}
+      >
         <View style={styles.heroSection}>
           <VestIllustration />
           <Text style={styles.title}>Connect Smart Vest</Text>
@@ -104,14 +111,15 @@ export default function ConnectScreen() {
         }}
         onSuccess={() => {}} // Not used in the real flow
       />
-      <DevBypassButton nextScreen="training" />
+      
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.background },
-  scrollContent: { paddingTop: 112, paddingBottom: 40 },
+  scrollView: { flex: 1 },
+  scrollContent: { flexGrow: 1, justifyContent: 'center', paddingBottom: 40 },
   heroSection: { alignItems: 'center', paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xl },
   title: { ...theme.typography.h2, textAlign: 'center', marginTop: theme.spacing.lg, marginBottom: theme.spacing.sm },
   subtitle: { ...theme.typography.caption, textAlign: 'center', color: theme.colors.text.secondary, maxWidth: 320 },
