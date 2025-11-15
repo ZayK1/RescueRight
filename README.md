@@ -256,16 +256,12 @@ RescueRight/
 ## 📬 Contact
 
 **Kasim Zayan**
-
-Full-stack developer | IoT systems | Real-time data processing
-
-Open to embedded systems, mobile development, and full-stack engineering roles.
+zayankasim1@gmail.com
 
 ---
 
 <div align="center">
 
-**Built with** ❤️ **for NUS IDEATE 2025**
 
 *Last Updated: November 2025*
 
