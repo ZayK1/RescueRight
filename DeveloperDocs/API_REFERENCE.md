@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document provides a comprehensive reference for RescueRight's core modules, hooks, components, and data structures.
+Technical reference for RescueRight's core modules, hooks, components, and data structures.
 
 ---
 
