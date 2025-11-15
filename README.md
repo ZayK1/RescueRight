@@ -1,126 +1,123 @@
 # RescueRight
 
-**Real-time Heimlich maneuver training system with IoT sensors and AI-powered feedback**
+**Smart Heimlich training vest with real-time sensor feedback | Top 3, NUS IDEATE 2025**
 
 [![React Native](https://img.shields.io/badge/React_Native-0.81-61DAFB?logo=react)](https://reactnative.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript)](https://www.typescriptlang.org/)
 [![Expo](https://img.shields.io/badge/Expo-SDK_54-000020?logo=expo)](https://expo.dev/)
 [![ESP32](https://img.shields.io/badge/ESP32-DevKit_V1-E7352C?logo=espressif)](https://www.espressif.com/)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 ---
 
-## Overview
+## Project Overview
 
-RescueRight is a smart training vest that provides real-time feedback during Heimlich maneuver practice. Using 4x MPU6500 IMU sensors embedded in a wearable vest, the system captures compression force, hand position, and body angle, delivering instant coaching through a mobile app.
+RescueRight is a wearable training system for Heimlich maneuver practice, built for the **NUS IDEATE 2025** innovation competition. The vest integrates 4x MPU6500 IMU sensors with an ESP32 microcontroller, transmitting real-time force, position, and angle data via Bluetooth to a React Native mobile app that provides instant performance coaching.
 
-**Built for**: Medical training centers, first aid courses, and individual practitioners
+**Problem**: Current Heimlich training relies on subjective instructor observation with no quantitative feedback.
 
-**Key Innovation**: Transforms subjective skill training into objective, data-driven learning with quantitative performance metrics.
-
----
-
-## Features
-
-### Hardware
-- **ESP32-Based Sensor System**: 4x MPU6500 IMU sensors on dual I2C buses
-- **Real-Time Data Transmission**: 10-20Hz update rate via Bluetooth Low Energy
-- **Accurate Measurements**: Force (±5N), position (±2cm), angle (±5°)
-- **Wearable Design**: 27cm × 13cm foam-backed sensor array
-
-### Mobile Application
-- **Cross-Platform**: iOS and Android support via React Native + Expo
-- **Real-Time Feedback**: Instant coaching on force, position, and technique
-- **Performance Analytics**: 0-100 scoring system with detailed breakdown
-- **Session Tracking**: Persistent storage of training history
-- **Professional UI**: Medical-grade design system (inspired by Apple Health)
-
-### Technical Highlights
-- **Data Processing Pipeline**: EMA/Median filtering for noise reduction
-- **Thrust Detection Algorithm**: 2.5N threshold with 400ms cooldown
-- **Calibration System**: CSV-based calibration with analysis scripts
-- **Type-Safe Architecture**: Full TypeScript coverage
-- **Modular Design**: Clean separation of hardware, data, and UI layers
+**Solution**: Hardware-software system providing objective, data-driven training metrics with <200ms feedback latency.
 
 ---
 
-## Tech Stack
+## Recognition & Funding
 
-**Frontend**
-- React Native 0.81.4
-- TypeScript 5.9.2
-- Expo SDK 54
-- Tailwind CSS + NativeWind
-- Three.js (3D animations)
+🏆 **Top 3 Finish** - NUS IDEATE 2025 (National innovation competition, 100+ teams)
+
+💰 **S$10,000 Grant** - NUS Venture Initiation Programme (VIP)
+
+🚀 **BLOCK71 Incubation** - Accepted into The Hangar @ NUS startup program (1,600+ ventures ecosystem)
+
+---
+
+## Technical Implementation
+
+### System Architecture
 
 **Hardware**
-- ESP32 DevKit V1
-- 4x MPU6500 (6-axis IMU)
-- Dual I2C buses (100kHz)
-- BLE 4.2
+- ESP32 DevKit V1 microcontroller
+- 4x MPU6500 6-axis IMU sensors
+- Dual I2C buses (GPIO 21/22, GPIO 25/26) @ 100kHz
+- BLE 4.2 GATT server with 3 characteristics
+- 10-20Hz sensor sampling rate
 
-**State & Data**
-- React hooks
-- AsyncStorage
-- Custom session management
-- Real-time BLE subscriptions
+**Mobile Application**
+- React Native 0.81.4 + TypeScript 5.9.2
+- Expo SDK 54 (cross-platform iOS/Android)
+- 6 screens, 41 components, 2 custom hooks
+- Real-time BLE data processing pipeline
+- AsyncStorage for session persistence
+- Three.js for 3D vest visualization
 
-**Build & Deploy**
-- Metro bundler
-- Expo CLI
-- Xcode / Android Studio
+**Data Pipeline**
+```
+ESP32 Sensors → BLE (Base64) → BluetoothManager →
+EMA/Median Filtering → Thrust Detection → UI Updates
+```
+
+### Key Technical Features
+
+**Real-Time Processing**
+- BLE data decoding and validation (0-500N force, 0-1 position, ±180° angle)
+- EMA filtering (force, position: α=0.2-0.3) for noise reduction
+- Median filtering (angle: window=5) for outlier removal
+- Thrust detection algorithm: 2.5N threshold with 400ms cooldown
+- Compression rate calculation over 60-second sliding window
+
+**Calibration System**
+- CSV-based calibration data collection
+- Python visualization scripts (force/position/angle analysis)
+- TypeScript analysis scripts (auto-generate calibration constants)
+- Statistical validation (R², RMSE, MAE)
+
+**Performance Analytics**
+- 0-100 scoring algorithm: Force quality (40pts) + Position accuracy (30pts) + Rate consistency (20pts) + Completion bonus (10pts)
+- Session history with detailed thrust-by-thrust breakdowns
+- Average force, max force, position accuracy metrics
+
+**Accuracy** (post-calibration)
+- Force: ±5N
+- Position: ±2cm
+- Angle: ±5°
+- Processing latency: <200ms
 
 ---
 
-## Quick Start
+## Data Flow Architecture
 
-### Prerequisites
-```bash
-node >= 18.0.0
-npm >= 9.0.0
 ```
-
-### Installation
-
-```bash
-# Clone repository
-git clone https://github.com/yourusername/RescueRight.git
-cd RescueRight/RescueRightApp
-
-# Install dependencies
-npm install
-
-# Start development server
-npm start
+┌──────────────────────────────────────────────────┐
+│  Physical Vest (ESP32 + 4x MPU6500 Sensors)     │
+│  • Reads acceleration/gyro from all sensors      │
+│  • Calculates force, position, angle            │
+│  • Transmits via BLE @ 10-20Hz                  │
+└──────────────┬───────────────────────────────────┘
+               │ Bluetooth LE (3 characteristics)
+               ↓
+┌──────────────────────────────────────────────────┐
+│  Mobile App (React Native + TypeScript)         │
+│  ┌────────────────────────────────────────────┐ │
+│  │ lib/bluetooth.ts (BLE Manager)             │ │
+│  │ • Device scanning & pairing                │ │
+│  │ • Base64 decoding                          │ │
+│  │ • Data validation                          │ │
+│  └──────────────┬─────────────────────────────┘ │
+│                 ↓                                │
+│  ┌──────────────────────────────────────────┐   │
+│  │ hooks/useBluetoothTrainingData.ts        │   │
+│  │ • EMA/Median filtering                   │   │
+│  │ • Thrust detection                       │   │
+│  │ • Feedback generation                    │   │
+│  └──────────────┬───────────────────────────┘   │
+│                 ↓                                │
+│  ┌──────────────────────────────────────────┐   │
+│  │ UI Components                            │   │
+│  │ • Force gauge (0-150N display)           │   │
+│  │ • Position heatmap (2D visualization)    │   │
+│  │ • Real-time feedback cards               │   │
+│  │ • Performance analytics (0-100 score)    │   │
+│  └──────────────────────────────────────────┘   │
+└──────────────────────────────────────────────────┘
 ```
-
-### Run on Device
-
-**iOS** (macOS only):
-```bash
-npm run ios
-```
-
-**Android**:
-```bash
-npm run android
-```
-
-### Hardware Setup
-
-1. **Flash ESP32 Firmware**:
-   - Open `RescueRightApp/firmware/mvp2.ino` in Arduino IDE
-   - Install ESP32 board support + MPU6050 library
-   - Upload to ESP32 DevKit V1
-
-2. **Connect Sensors**:
-   - Wire 4x MPU6500 to dual I2C buses (see `DeveloperDocs/HARDWARE.md`)
-   - Verify sensor detection in Serial Monitor
-
-3. **Pair with App**:
-   - Launch app → Connect screen
-   - Scan for "RescueRight Vest #001"
-   - Connect and start training
 
 ---
 
@@ -128,108 +125,78 @@ npm run android
 
 ```
 RescueRight/
-├── DeveloperDocs/          # Comprehensive technical documentation
+├── DeveloperDocs/          # Technical documentation
 │   ├── ARCHITECTURE.md     # System design & data flow
 │   ├── HARDWARE.md         # ESP32 firmware & BLE protocol
 │   ├── API_REFERENCE.md    # Core modules & components
-│   ├── DEPLOYMENT.md       # Build & deployment guides
-│   └── CALIBRATION.md      # Sensor calibration procedures
+│   ├── DEPLOYMENT.md       # Build & deployment
+│   └── CALIBRATION.md      # Sensor calibration
 │
-├── RescueRightApp/         # Mobile application
-│   ├── app/                # Expo Router screens (5 screens)
-│   ├── components/         # React components (41 components)
-│   ├── hooks/              # Custom hooks (2)
-│   ├── lib/                # Core logic (bluetooth, calibration, session)
-│   ├── firmware/           # ESP32 Arduino code (2 versions)
-│   ├── styles/             # Design system & theme
-│   └── assets/             # Images, 3D models
+├── RescueRightApp/
+│   ├── app/                # Screens (6 files)
+│   ├── components/         # UI components (41 files)
+│   ├── hooks/              # Custom hooks (2 files)
+│   ├── lib/                # Core logic (bluetooth, calibration, session, mock)
+│   ├── firmware/           # ESP32 Arduino code (mvp2.ino, mvp2_optimized.ino)
+│   └── styles/             # Design system (medical-grade color palette)
 │
-└── README.md               # This file
+└── README.md
 ```
 
 ---
 
-## Architecture Overview
+## Technical Skills Demonstrated
 
-```
-┌────────────────────────────────────────────────────────┐
-│                  ESP32 + 4x MPU6500                    │
-│  Force, Position, Angle @ 10-20Hz via BLE             │
-└────────────────┬───────────────────────────────────────┘
-                 │ Bluetooth LE (GATT)
-                 │ 3 Characteristics: Force, Position, Angle
-┌────────────────┴───────────────────────────────────────┐
-│              Mobile App (React Native)                 │
-│  ┌──────────────────────────────────────────────────┐  │
-│  │ lib/bluetooth.ts - BLE Manager                   │  │
-│  │ • Device scanning & connection                   │  │
-│  │ • Base64 decoding & data validation              │  │
-│  └────────────────┬─────────────────────────────────┘  │
-│                   │                                     │
-│  ┌────────────────┴─────────────────────────────────┐  │
-│  │ hooks/useBluetoothTrainingData.ts                │  │
-│  │ • EMA/Median filtering (noise reduction)         │  │
-│  │ • Thrust detection (2.5N threshold)              │  │
-│  │ • Real-time feedback generation                  │  │
-│  └────────────────┬─────────────────────────────────┘  │
-│                   │                                     │
-│  ┌────────────────┴─────────────────────────────────┐  │
-│  │ UI Components (Training, Analytics, etc.)        │  │
-│  │ • Real-time force gauge & heatmap                │  │
-│  │ • Performance scoring (0-100 points)             │  │
-│  └──────────────────────────────────────────────────┘  │
-└────────────────────────────────────────────────────────┘
-```
+**Full-Stack IoT Development**
+- Hardware integration (ESP32, I2C communication, sensor fusion)
+- Embedded firmware (C/C++, Arduino framework)
+- Mobile development (React Native, TypeScript)
+- BLE protocol implementation (GATT services, characteristics)
 
-**For detailed architecture, see [`DeveloperDocs/ARCHITECTURE.md`](DeveloperDocs/ARCHITECTURE.md)**
+**Real-Time Systems**
+- Signal processing (EMA/Median filtering, noise reduction)
+- Data validation and quality assessment
+- Sub-200ms latency optimization
+- Efficient BLE data subscriptions
 
----
+**Software Architecture**
+- Singleton pattern for BLE management
+- Custom hooks for state management
+- TypeScript type safety throughout
+- Modular, testable design
+- Clean separation of concerns (hardware, data, UI)
 
-## Key Algorithms
+**Data Engineering**
+- Sensor calibration methodology
+- CSV data analysis and visualization (Python)
+- Statistical validation (R², RMSE, MAE)
+- Automated constant generation (TypeScript)
 
-### Thrust Detection
-```typescript
-// Force must exceed threshold and respect cooldown period
-const isThrust =
-  filteredForce > 2.5  // Newtons
-  && (now - lastThrust) > 400  // milliseconds
-  && dataIsValid;
-```
-
-### Position Calculation
-```cpp
-// Weighted average based on sensor compression
-float posX = (sensor1.force * pos1.x + sensor2.force * pos2.x + ...) / totalForce;
-float posY = (sensor1.force * pos1.y + sensor2.force * pos2.y + ...) / totalForce;
-
-// Apply center bias for Heimlich targeting
-posX = centerX + (posX - centerX) * (1.0 - CENTER_BIAS);
-```
-
-### Performance Scoring
-```typescript
-// 0-100 point system
-score =
-  forceQuality * 0.4       // 40 points: 20-60N optimal
-  + positionAccuracy * 0.3  // 30 points: center target ±8%
-  + rateConsistency * 0.2   // 20 points: 5 thrusts/min ideal
-  + completionBonus * 0.1;  // 10 points: minimum 3 thrusts
-```
+**UI/UX Design**
+- Medical-grade design system (Apple Health-inspired)
+- Real-time data visualization (force gauge, heatmap)
+- Cross-platform responsive design
+- Accessibility considerations
 
 ---
 
-## Screenshots
+## Quick Start
 
-### Training Screen
-Real-time force gauge, hand position heatmap, and instant feedback
+### Installation
+```bash
+git clone https://github.com/ZayK1/RescueRight.git
+cd RescueRight/RescueRightApp
+npm install
+npm start
+```
 
-### Analytics Screen
-Post-session performance breakdown with 0-100 scoring
+### Hardware Setup
+1. Flash `firmware/mvp2.ino` to ESP32 DevKit V1
+2. Connect 4x MPU6500 sensors to dual I2C buses
+3. Verify sensor detection in Serial Monitor (115200 baud)
+4. Pair "RescueRight Vest #001" via app
 
-### Connect Screen
-Bluetooth device scanning and pairing interface
-
-_(Screenshots to be added)_
+**Detailed setup**: See `DeveloperDocs/HARDWARE.md` and `DeveloperDocs/DEPLOYMENT.md`
 
 ---
 
@@ -239,136 +206,49 @@ _(Screenshots to be added)_
 |--------|-------|
 | BLE Update Rate | 10-20Hz |
 | Processing Latency | <200ms |
-| Force Accuracy | ±5N (post-calibration) |
+| Force Accuracy | ±5N |
 | Position Accuracy | ±2cm |
 | Angle Accuracy | ±5° |
-| App Startup Time | ~2s (cold start) |
+| App Startup | ~2s |
+
+---
+
+## Development Context
+
+**Role**: Sole software developer (entire codebase)
+
+**Timeline**: Built for NUS IDEATE 2025 competition (Oct 2024 - Jan 2025)
+
+**Team**: 5-person interdisciplinary team (1 software, 1 hardware, 1 mechanical, 2 business)
+
+**Outcome**:
+- Top 3 finish among 100+ teams
+- S$10,000 NUS VIP grant awarded
+- Accepted into BLOCK71 incubation program at The Hangar @ NUS
+
+**Current Status**: Functional MVP with production-ready code architecture. Grant funding active, pursuing commercialization through BLOCK71.
 
 ---
 
 ## Documentation
 
-Comprehensive developer documentation available in [`DeveloperDocs/`](DeveloperDocs/):
-
-- **[ARCHITECTURE.md](DeveloperDocs/ARCHITECTURE.md)** - System design, tech stack, data flow
-- **[HARDWARE.md](DeveloperDocs/HARDWARE.md)** - ESP32 firmware, sensors, BLE protocol
-- **[API_REFERENCE.md](DeveloperDocs/API_REFERENCE.md)** - Core modules, hooks, components
-- **[DEPLOYMENT.md](DeveloperDocs/DEPLOYMENT.md)** - Build & deployment instructions
-- **[CALIBRATION.md](DeveloperDocs/CALIBRATION.md)** - Sensor calibration procedures
-
----
-
-## Development Workflow
-
-### Local Development
-```bash
-npm start              # Start Expo dev server
-npm run ios            # Build for iOS simulator
-npm run android        # Build for Android emulator
-npm run typecheck      # TypeScript validation
-```
-
-### Hardware Development
-```bash
-# Arduino IDE
-# 1. Open RescueRightApp/firmware/mvp2.ino
-# 2. Select Board: ESP32 Dev Module
-# 3. Select Port: (your ESP32 port)
-# 4. Upload
-
-# Serial Monitor (115200 baud)
-# Verify sensor initialization and real-time data output
-```
-
-### Calibration Workflow
-```bash
-# Collect calibration data (CSV format)
-# Run visualization
-python scripts/visualize_calibration.py data.csv
-
-# Calculate calibration constants
-npx ts-node scripts/analyze_calibration.ts data.csv
-
-# Update lib/calibration.ts with new constants
-```
+Technical documentation available in [`DeveloperDocs/`](DeveloperDocs/):
+- [ARCHITECTURE.md](DeveloperDocs/ARCHITECTURE.md) - System design, tech stack, data flow
+- [HARDWARE.md](DeveloperDocs/HARDWARE.md) - ESP32 firmware, sensors, BLE protocol
+- [API_REFERENCE.md](DeveloperDocs/API_REFERENCE.md) - Core modules, hooks, components
+- [DEPLOYMENT.md](DeveloperDocs/DEPLOYMENT.md) - Build & deployment instructions
+- [CALIBRATION.md](DeveloperDocs/CALIBRATION.md) - Sensor calibration procedures
 
 ---
 
-## Known Limitations
-
-- **Single-device connection**: One vest per app instance
-- **Local storage only**: No cloud sync (architecture supports future implementation)
-- **Manual calibration**: Requires one-time calibration per vest
-- **iOS certificate expiry**: Free Apple Developer certificates last 7 days (commercial deployment would use paid account)
-
----
-
-## Future Enhancements
-
-**Potential Features** (architecture designed for extensibility):
-- Cloud sync & coach dashboards
-- Multi-user profiles
-- Historical trend analysis
-- Voice-guided feedback
-- Video recording integration
-- Custom threshold configuration
-- Leaderboards & achievements
-
----
-
-## Contributing
-
-This is a personal project developed as a proof of concept. For questions or collaboration inquiries, please open an issue.
-
----
-
-## License
-
-MIT License - see [LICENSE](LICENSE) file for details
-
----
-
-## Technical Achievements
-
-This project demonstrates:
-
-✅ **Full-stack IoT development**: Hardware (ESP32), firmware (C/C++), mobile (React Native + TypeScript)
-
-✅ **Real-time data processing**: BLE communication, noise filtering, thrust detection
-
-✅ **Professional app architecture**: Clean separation of concerns, TypeScript type safety, modular design
-
-✅ **Sensor calibration**: CSV-based calibration system with statistical analysis scripts
-
-✅ **Cross-platform deployment**: iOS and Android from single codebase
-
-✅ **Medical-grade UI/UX**: Professional design system with accessibility considerations
-
-✅ **Performance optimization**: EMA/Median filtering, efficient BLE subscriptions, <200ms latency
-
-✅ **Comprehensive documentation**: 70+ KB of technical documentation (industry-standard quality)
-
----
-
-## Author
+## Contact
 
 **Kasim Zayan**
 
-- Portfolio: _(add your portfolio link)_
-- LinkedIn: _(add your LinkedIn)_
-- Email: _(add your email)_
+Full-stack developer specializing in IoT systems and real-time data processing.
+
+Open to opportunities in embedded systems, mobile development, or full-stack engineering roles.
 
 ---
-
-## Acknowledgments
-
-- Built as a proof-of-concept for medical training innovation
-- Designed following medical guidelines for Heimlich maneuver technique
-- UI/UX inspired by Apple Health and medical EMR systems
-- Sensor calibration methodology based on standard metrology practices
-
----
-
-**Project Status**: Functional MVP with production-ready code architecture
 
 **Last Updated**: November 2025
