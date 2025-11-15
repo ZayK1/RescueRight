@@ -1,626 +1,374 @@
-# RescueRight: Smart Choking-Rescue Training System
-## IDEATE 2025 Semifinalist - Team Kiwi (AKSD2103)_
+# RescueRight
+
+**Real-time Heimlich maneuver training system with IoT sensors and AI-powered feedback**
+
+[![React Native](https://img.shields.io/badge/React_Native-0.81-61DAFB?logo=react)](https://reactnative.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript)](https://www.typescriptlang.org/)
+[![Expo](https://img.shields.io/badge/Expo-SDK_54-000020?logo=expo)](https://expo.dev/)
+[![ESP32](https://img.shields.io/badge/ESP32-DevKit_V1-E7352C?logo=espressif)](https://www.espressif.com/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 ---
 
-## 📋 Executive Summary
+## Overview
 
-**RescueRight** is the world's first smart choking-rescue training vest with AI-powered coaching, developed by NUS IDEATE Team 8 for the IDEATE 2025 competition. Our innovative solution transforms traditional first aid training by embedding medical-grade sensors and real-time AI feedback into a wearable training vest, ensuring trainees learn precise, safe, and effective life-saving techniques.
+RescueRight is a smart training vest that provides real-time feedback during Heimlich maneuver practice. Using 4x MPU6500 IMU sensors embedded in a wearable vest, the system captures compression force, hand position, and body angle, delivering instant coaching through a mobile app.
 
-### 🎯 Mission Statement
-*"Transforming uncertain simulations into verified, life-saving skills"*
+**Built for**: Medical training centers, first aid courses, and individual practitioners
 
-### 🏆 Competition Status
-- ✅ **Successfully cleared PDR (Preliminary Design Review)**
-- ✅ **Qualified for Semifinals** (October 15, 2025)
-- 🎯 **Target**: Finals qualification with business pitch
+**Key Innovation**: Transforms subjective skill training into objective, data-driven learning with quantitative performance metrics.
 
 ---
 
-## 👥 Team Members
+## Features
 
-| Name | 
-|------|
-| **Ansh Bhaskar** | 
-| **Phua Kai Jie** | 
-| **Kasim Zayan** | 
-| **Serena Tang** | 
-| **Daniel Yow** | 
+### Hardware
+- **ESP32-Based Sensor System**: 4x MPU6500 IMU sensors on dual I2C buses
+- **Real-Time Data Transmission**: 10-20Hz update rate via Bluetooth Low Energy
+- **Accurate Measurements**: Force (±5N), position (±2cm), angle (±5°)
+- **Wearable Design**: 27cm × 13cm foam-backed sensor array
+
+### Mobile Application
+- **Cross-Platform**: iOS and Android support via React Native + Expo
+- **Real-Time Feedback**: Instant coaching on force, position, and technique
+- **Performance Analytics**: 0-100 scoring system with detailed breakdown
+- **Session Tracking**: Persistent storage of training history
+- **Professional UI**: Medical-grade design system (inspired by Apple Health)
+
+### Technical Highlights
+- **Data Processing Pipeline**: EMA/Median filtering for noise reduction
+- **Thrust Detection Algorithm**: 2.5N threshold with 400ms cooldown
+- **Calibration System**: CSV-based calibration with analysis scripts
+- **Type-Safe Architecture**: Full TypeScript coverage
+- **Modular Design**: Clean separation of hardware, data, and UI layers
 
 ---
 
-## 🏛️ About IDEATE 2025
+## Tech Stack
 
-### Competition Overview
+**Frontend**
+- React Native 0.81.4
+- TypeScript 5.9.2
+- Expo SDK 54
+- Tailwind CSS + NativeWind
+- Three.js (3D animations)
 
-```mermaid
-graph LR
-    A[Idea Submission] --> B[PDR<br/>Preliminary Design Review]
-    B --> C[Prototyping Phase<br/>Current Stage]
-    C --> D[Finals<br/>Oct 15, 2025]
-    D --> E[Result<br/>Business Pitch]
-    
-    style C fill:#f9f,stroke:#333,stroke-width:4px
-    style B fill:#9f9,stroke:#333,stroke-width:2px
+**Hardware**
+- ESP32 DevKit V1
+- 4x MPU6500 (6-axis IMU)
+- Dual I2C buses (100kHz)
+- BLE 4.2
+
+**State & Data**
+- React hooks
+- AsyncStorage
+- Custom session management
+- Real-time BLE subscriptions
+
+**Build & Deploy**
+- Metro bundler
+- Expo CLI
+- Xcode / Android Studio
+
+---
+
+## Quick Start
+
+### Prerequisites
+```bash
+node >= 18.0.0
+npm >= 9.0.0
 ```
 
-### Key Resources Provided
+### Installation
 
-#### 💰 Financial Support
-- **Budget**: $100 SGD per team for prototyping
-- **Reimbursement Process**: IRL approval → LPI form → Receipts → Bank statements to Alvin Poh
+```bash
+# Clone repository
+git clone https://github.com/yourusername/RescueRight.git
+cd RescueRight/RescueRightApp
 
-#### 🏭 Facilities Access
-- **Electronics Lab**: Prototyping workspace (Mon-Fri 8:30am-6pm)
-- **Studios 1-4 @ E2A**: Additional workspaces
-- **Innovation & Design Hub @ EA**: Consultation space
+# Install dependencies
+npm install
 
-#### 🛠️ Equipment & Services
+# Start development server
+npm start
+```
 
-| Category | Details | Access Method |
-|----------|---------|---------------|
-| **Loanable Consumables** | Batteries, wires, tapes, resistors | Email Alvin + Appointment |
-| **Loanable Non-consumables** | Motors, sensors, hot glue gun, calipers | Email Alvin + Appointment |
-| **In-Lab Tools** | Multimeter, soldering iron, heat gun | Use in lab only |
-| **3D Printing** | Max 256x256x256mm, ~3 days lead | Job Request Form |
-| **Laser Cutting** | 2-5mm acrylic (clear/black/white) | Job Request Form |
+### Run on Device
 
-#### 👨‍🏫 Mentorship Program
-- **Industrial Mentors**: 2 hours consultation (e.g., Hugh Mason, Chan Tong Leong)
-- **Student Mentors**: Technical and strategic guidance
-- **Selection Deadline**: September 11, 2025 (Completed ✅)
+**iOS** (macOS only):
+```bash
+npm run ios
+```
 
-### 📅 Critical Dates & Deadlines
+**Android**:
+```bash
+npm run android
+```
 
-| Date | Milestone | Status |
-|------|-----------|--------|
-| September 11, 2025 | Safety declaration & quiz | ✅ Completed |
-| September 24 - October 7, 2025 | MVP Development Sprint | 🔄 In Progress |
-| **October 7, 2025 (18:00)** | Semifinals poster submission (A1 PDF) | 📋 Pending |
-| **October 14, 2025 (18:00)** | Finals slides submission | 📋 Pending |
-| **October 15, 2025** | Semifinals presentation | 🎯 Target |
+### Hardware Setup
+
+1. **Flash ESP32 Firmware**:
+   - Open `RescueRightApp/firmware/mvp2.ino` in Arduino IDE
+   - Install ESP32 board support + MPU6050 library
+   - Upload to ESP32 DevKit V1
+
+2. **Connect Sensors**:
+   - Wire 4x MPU6500 to dual I2C buses (see `DeveloperDocs/HARDWARE.md`)
+   - Verify sensor detection in Serial Monitor
+
+3. **Pair with App**:
+   - Launch app → Connect screen
+   - Scan for "RescueRight Vest #001"
+   - Connect and start training
 
 ---
 
-## 🚨 The Critical Problem
+## Project Structure
 
-### The Choking Crisis by Numbers
-
-```mermaid
-pie title "Choking Statistics Global Impact"
-    "Deaths every 3 minutes" : 1
-    "Brain damage onset (4 min)" : 1
-    "Lifetime choking risk (33%)" : 1
-    "Current training success rate (47%)" : 1
 ```
-
-### Key Statistics
-
-| Metric | Value | Source |
-|--------|-------|--------|
-| **Global choking deaths** | Every 3 minutes | SJTREM 2025 |
-| **Brain damage onset** | 4 minutes after airway blockage | Resuscitation Council UK |
-| **Lifetime choking risk** | 1 in 3 people (33%) | Medical research |
-| **Heimlich success rate** | Only 47% | Japan EMS study |
-| **Singapore annual trainees** | >120,000 people | Singapore Heart Foundation/SCDF |
-| **Skill retention decline** | Significant after 3-6 months | Training studies |
-
-### The Training Gap
-
-```mermaid
-graph TD
-    A[Current Training Methods] --> B[Static Mannequins]
-    A --> C[No Force Measurement]
-    A --> D[Motion Simulation Only]
-    
-    B --> E[No Real Feedback]
-    C --> F[Risk of Injury]
-    D --> G[Inaccurate Assessment]
-    
-    E --> H[Low Confidence]
-    F --> I[Fatal Injuries Possible]
-    G --> J[Poor Real-World Performance]
-    
-    style A fill:#f99,stroke:#333,stroke-width:2px
-    style H fill:#faa,stroke:#333,stroke-width:1px
-    style I fill:#faa,stroke:#333,stroke-width:1px
-    style J fill:#faa,stroke:#333,stroke-width:1px
-```
-
-### Consequences of Poor Training
-
-#### ⚠️ Too Little Force
-- Airway remains blocked
-- Victim continues choking
-- Death or brain damage
-
-#### ⚠️ Too Much Force
-- Gastric ruptures
-- Rib fractures
-- Myocardial injury
-- Internal organ damage
-- Especially dangerous for elderly/vulnerable groups
-
----
-
-## 🔍 Current Training Method Limitations
-
-### Traditional Equipment Problems
-
-| Issue | Description | Impact |
-|-------|-------------|--------|
-| **Subpar Equipment** | Static mannequins, basic vests | Minimal skill transfer |
-| **No Force Measurement** | Cannot verify correct pressure | Risk of injury/ineffectiveness |
-| **Inaccurate Assessment** | "Going through motions" | False confidence |
-| **High Student Ratios** | Limited instructor feedback | Unequal training quality |
-| **Practice Safety Concerns** | Can't practice full-force | Unprepared for real emergencies |
-
-### Competitive Landscape Analysis
-
-```mermaid
-graph LR
-    subgraph "Current Solutions"
-        A[Act+Fast Vest<br/>Purely Mechanical]
-        B[Smart CPR Mannequins<br/>Wrong Application]
-        C[Suction Devices<br/>Not Training Tools]
-    end
-    
-    subgraph "Their Limitations"
-        D[No Sensors]
-        E[No Force Feedback]
-        F[No Position Tracking]
-        G[Not Guideline-Approved]
-    end
-    
-    A --> D
-    A --> E
-    A --> F
-    C --> G
-    
-    style A fill:#fdd,stroke:#333
-    style B fill:#fdd,stroke:#333
-    style C fill:#fdd,stroke:#333
+RescueRight/
+├── DeveloperDocs/          # Comprehensive technical documentation
+│   ├── ARCHITECTURE.md     # System design & data flow
+│   ├── HARDWARE.md         # ESP32 firmware & BLE protocol
+│   ├── API_REFERENCE.md    # Core modules & components
+│   ├── DEPLOYMENT.md       # Build & deployment guides
+│   └── CALIBRATION.md      # Sensor calibration procedures
+│
+├── RescueRightApp/         # Mobile application
+│   ├── app/                # Expo Router screens (5 screens)
+│   ├── components/         # React components (41 components)
+│   ├── hooks/              # Custom hooks (2)
+│   ├── lib/                # Core logic (bluetooth, calibration, session)
+│   ├── firmware/           # ESP32 Arduino code (2 versions)
+│   ├── styles/             # Design system & theme
+│   └── assets/             # Images, 3D models
+│
+└── README.md               # This file
 ```
 
 ---
 
-## 💡 The Solution: RescueRight Smart Vest System
+## Architecture Overview
 
-### System Architecture
-
-```mermaid
-graph TB
-    subgraph "Hardware Layer"
-        A[Smart Training Vest]
-        B[Medical-Grade Sensors]
-        C[Bluetooth/WiFi Module]
-    end
-    
-    subgraph "Software Layer"
-        D[Mobile App<br/>Android/iOS]
-        E[AI Processing Engine]
-        F[Analytics Dashboard]
-    end
-    
-    subgraph "User Interface"
-        G[Real-Time Feedback]
-        H[Voice Coaching]
-        I[Performance Metrics]
-    end
-    
-    A --> B
-    B --> C
-    C --> D
-    D --> E
-    E --> F
-    E --> G
-    E --> H
-    F --> I
-    
-    style A fill:#9f9,stroke:#333,stroke-width:2px
-    style D fill:#99f,stroke:#333,stroke-width:2px
-    style E fill:#f9f,stroke:#333,stroke-width:2px
+```
+┌────────────────────────────────────────────────────────┐
+│                  ESP32 + 4x MPU6500                    │
+│  Force, Position, Angle @ 10-20Hz via BLE             │
+└────────────────┬───────────────────────────────────────┘
+                 │ Bluetooth LE (GATT)
+                 │ 3 Characteristics: Force, Position, Angle
+┌────────────────┴───────────────────────────────────────┐
+│              Mobile App (React Native)                 │
+│  ┌──────────────────────────────────────────────────┐  │
+│  │ lib/bluetooth.ts - BLE Manager                   │  │
+│  │ • Device scanning & connection                   │  │
+│  │ • Base64 decoding & data validation              │  │
+│  └────────────────┬─────────────────────────────────┘  │
+│                   │                                     │
+│  ┌────────────────┴─────────────────────────────────┐  │
+│  │ hooks/useBluetoothTrainingData.ts                │  │
+│  │ • EMA/Median filtering (noise reduction)         │  │
+│  │ • Thrust detection (2.5N threshold)              │  │
+│  │ • Real-time feedback generation                  │  │
+│  └────────────────┬─────────────────────────────────┘  │
+│                   │                                     │
+│  ┌────────────────┴─────────────────────────────────┐  │
+│  │ UI Components (Training, Analytics, etc.)        │  │
+│  │ • Real-time force gauge & heatmap                │  │
+│  │ • Performance scoring (0-100 points)             │  │
+│  └──────────────────────────────────────────────────┘  │
+└────────────────────────────────────────────────────────┘
 ```
 
-### 🎯 Core Features
+**For detailed architecture, see [`DeveloperDocs/ARCHITECTURE.md`](DeveloperDocs/ARCHITECTURE.md)**
 
-#### 1. Precision Sensor Array
+---
 
-```mermaid
-graph LR
-    subgraph "Sensor Capabilities"
-        A[Force Detection<br/>0-300N ±2N]
-        B[Position Mapping<br/>1cm precision]
-        C[Angle Analysis<br/>Thrust vectors]
-        D[Depth Measurement<br/>Compression tracking]
-        E[Rhythm Tracking<br/>Timing intervals]
-    end
-    
-    style A fill:#afd,stroke:#333
-    style B fill:#afd,stroke:#333
-    style C fill:#afd,stroke:#333
-    style D fill:#afd,stroke:#333
-    style E fill:#afd,stroke:#333
+## Key Algorithms
+
+### Thrust Detection
+```typescript
+// Force must exceed threshold and respect cooldown period
+const isThrust =
+  filteredForce > 2.5  // Newtons
+  && (now - lastThrust) > 400  // milliseconds
+  && dataIsValid;
 ```
 
-**Technical Specifications:**
-- **Sampling Rate**: 100Hz medical-grade pressure sensors
-- **Force Range**: 0-300 Newtons with ±2N accuracy
-- **Position Accuracy**: 1cm precision for hand placement
-- **Real-time Processing**: Triangulation of force distribution
-- **Calibration**: Automatic adjustment for different body types
+### Position Calculation
+```cpp
+// Weighted average based on sensor compression
+float posX = (sensor1.force * pos1.x + sensor2.force * pos2.x + ...) / totalForce;
+float posY = (sensor1.force * pos1.y + sensor2.force * pos2.y + ...) / totalForce;
 
-#### 2. Real-Time AI Feedback System
-
-##### Visual Guidance Components
-| Feature | Description | Purpose |
-|---------|-------------|---------|
-| **Live Pressure Heatmap** | Color-coded force distribution | Instant visual feedback |
-| **3D Hand Position Indicator** | Real-time hand placement tracking | Correct positioning |
-| **Force Meter** | Green zone (80-120N optimal) | Safe force application |
-| **Angle Indicator** | Thrust vector visualization | Proper technique |
-
-##### Audio Coaching Features
-- **Instant Corrections**: "Move hands 2cm higher"
-- **Pressure Guidance**: "Increase pressure by 30%"
-- **Rhythm Training**: "Thrust... release... thrust..."
-- **Positive Reinforcement**: "Perfect pressure - maintain this"
-- **Scenario Simulation**: Background noise, emergency timers
-
-#### 3. Performance Analytics Dashboard
-
-```mermaid
-graph TD
-    subgraph "Real-Time Display"
-        A[Current Force]
-        B[Position Accuracy]
-        C[Angle Diagram]
-        D[Success Rate]
-    end
-    
-    subgraph "Post-Session Analytics"
-        E[Force Consistency Graph]
-        F[Position Improvement Tracking]
-        G[Time to First Effective Thrust]
-        H[Scenario Completion Rates]
-        I[Skill Retention Metrics]
-    end
-    
-    A --> E
-    B --> F
-    C --> G
-    D --> H
-    D --> I
+// Apply center bias for Heimlich targeting
+posX = centerX + (posX - centerX) * (1.0 - CENTER_BIAS);
 ```
 
-### 🔄 How It Works - Step by Step
-
-```mermaid
-sequenceDiagram
-    participant T as Trainee
-    participant V as Smart Vest
-    participant R as Responder
-    participant A as Mobile App
-    participant AI as AI Engine
-    
-    T->>V: Wears vest (victim role)
-    R->>V: Performs Heimlich maneuver
-    V->>A: Streams sensor data (Bluetooth/WiFi)
-    A->>AI: Processes data
-    AI->>A: Generates feedback
-    A->>R: Real-time coaching
-    AI->>A: Stores performance data
-    A->>R: Post-session analytics
-    R->>T: Improved technique
+### Performance Scoring
+```typescript
+// 0-100 point system
+score =
+  forceQuality * 0.4       // 40 points: 20-60N optimal
+  + positionAccuracy * 0.3  // 30 points: center target ±8%
+  + rateConsistency * 0.2   // 20 points: 5 thrusts/min ideal
+  + completionBonus * 0.1;  // 10 points: minimum 3 thrusts
 ```
 
 ---
 
-## 📊 Market Analysis & Business Strategy
+## Screenshots
 
-### Target Customer Segments
+### Training Screen
+Real-time force gauge, hand position heatmap, and instant feedback
 
-```mermaid
-pie title "Singapore Market Segments (675,000 routine trainees)"
-    "Food Service Workers" : 235000
-    "Domestic Helpers" : 295000
-    "Healthcare Staff" : 100000
-    "Preschool Educators" : 25000
-    "National Servicemen" : 20000
-```
+### Analytics Screen
+Post-session performance breakdown with 0-100 scoring
 
-### Primary Customers
-- **Singapore Red Cross Academy**
-- **Singapore First Aid Training Centre (SFATC)**
-- **Corporate training departments**
-- **Healthcare institutions**
-- **Educational facilities**
+### Connect Screen
+Bluetooth device scanning and pairing interface
 
-### Market Opportunity Analysis
-
-#### 🌏 Market Size
-
-| Market Level | Size | Details |
-|--------------|------|---------|
-| **TAM (Total Addressable Market)** | $4.5B → $7.5B by 2032 | Global first aid training market |
-| **SAM (Serviceable Addressable Market)** | $750,000 | Singapore: 1,500 entities × 5 vests × $100 |
-| **SOM (Serviceable Obtainable Market)** | $75,000 | 10% of SAM in Years 1-2 |
-| **Singapore Annual Market** | $28 million | ~50,000 annual choke rescue learners |
-| **ASEAN Expansion** | 20x opportunity | Regional scaling potential |
-
-### Value Proposition Canvas
-
-```mermaid
-graph LR
-    subgraph "Customer Pain Points"
-        A[Can't assess pressure accurately]
-        B[High teacher-student ratios]
-        C[Improper technique feedback]
-        D[Low trainee confidence]
-    end
-    
-    subgraph "RescueRight Solutions"
-        E[Real-time sensor feedback]
-        F[AI individual coaching]
-        G[Precise analytics]
-        H[Verified certification]
-    end
-    
-    A --> E
-    B --> F
-    C --> G
-    D --> H
-    
-    style E fill:#9f9,stroke:#333
-    style F fill:#9f9,stroke:#333
-    style G fill:#9f9,stroke:#333
-    style H fill:#9f9,stroke:#333
-```
+_(Screenshots to be added)_
 
 ---
 
-## 🏗️ Development Roadmap
+## Performance Metrics
 
-### Current Phase: MVP Development Sprint
-**September 24 - October 7, 2025**
-
-```mermaid
-gantt
-    title MVP Development Timeline
-    dateFormat  YYYY-MM-DD
-    section Procurement
-    Component sourcing       :2025-09-24, 3d
-    Budget approval         :2025-09-25, 2d
-    section Development
-    Sensor integration      :2025-09-27, 4d
-    App development        :2025-09-28, 5d
-    AI algorithm coding    :2025-09-29, 4d
-    section Testing
-    Integration testing    :2025-10-03, 2d
-    User testing          :2025-10-05, 1d
-    section Preparation
-    Poster design         :2025-10-04, 3d
-    Final adjustments     :2025-10-06, 1d
-```
-
-### Semifinals Judging Criteria Alignment
-
-| Criteria | RescueRight Response | Evidence |
-|----------|---------------------|----------|
-| **Product Demonstration** | Live vest demo with real-time feedback | Working MVP prototype |
-| **Ergonomics & Usability** | Comfortable, adjustable vest design | User testing results |
-| **Technical Design & Feasibility** | Medical-grade sensors, proven tech | Technical specifications |
-| **Modularity & Scalability** | Modular sensor pods, cloud-ready | Architecture design |
-| **Market Fit & Value Proposition** | Clear B2B model, validated need | Market research data |
+| Metric | Value |
+|--------|-------|
+| BLE Update Rate | 10-20Hz |
+| Processing Latency | <200ms |
+| Force Accuracy | ±5N (post-calibration) |
+| Position Accuracy | ±2cm |
+| Angle Accuracy | ±5° |
+| App Startup Time | ~2s (cold start) |
 
 ---
 
-## 🎤 Competition Pitch Strategy
+## Documentation
 
-### 4-Minute Pitch Structure
+Comprehensive developer documentation available in [`DeveloperDocs/`](DeveloperDocs/):
 
-```mermaid
-graph LR
-    A[Opening Hook<br/>0:00-0:30<br/>Kai Jie] --> B[Problem Deep Dive<br/>0:30-1:25<br/>Team]
-    B --> C[Solution Demo<br/>1:25-2:15<br/>Serena]
-    C --> D[Market Opportunity<br/>2:15-2:50<br/>Ansh]
-    D --> E[Differentiation<br/>2:50-3:25<br/>Zayan]
-    E --> F[Impact & CTA<br/>3:25-4:00<br/>Daniel]
-    
-    style A fill:#f9f,stroke:#333,stroke-width:2px
-    style F fill:#9f9,stroke:#333,stroke-width:2px
-```
-
-### Opening Hook (Kai Jie - 30 seconds)
-> "Every 3 minutes, someone in the world dies from choking. And when the airway is blocked, you have just 4 minutes before brain damage begins. It's not rare — 1 in 3 people will experience a choking episode in their lifetime. But the way we train today doesn't prepare people to save lives tomorrow. Courses rely on static mannequins to teach, or even worse, simply ask participants to simulate doing the Heimlich maneuver. Assessments are just about going through the motions — there's no way to verify correct technique. Would someone trained in this manner really be confident to perform such maneuvers in the real world?"
-
-### Closing Impact Statement (Daniel - 35 seconds)
-> "With RescueRight: People learn the skill accurately with confidence; rescues will be more effective and safer—especially for vulnerable groups like the elderly. Every 3 minutes, someone dies from choking. RescueRight ensures that when someone is choking, rescuers can act confidently and safely. We're not just improving training. We're creating a smarter and safer standard for lifesaving."
+- **[ARCHITECTURE.md](DeveloperDocs/ARCHITECTURE.md)** - System design, tech stack, data flow
+- **[HARDWARE.md](DeveloperDocs/HARDWARE.md)** - ESP32 firmware, sensors, BLE protocol
+- **[API_REFERENCE.md](DeveloperDocs/API_REFERENCE.md)** - Core modules, hooks, components
+- **[DEPLOYMENT.md](DeveloperDocs/DEPLOYMENT.md)** - Build & deployment instructions
+- **[CALIBRATION.md](DeveloperDocs/CALIBRATION.md)** - Sensor calibration procedures
 
 ---
 
-## 🎯 Competitive Advantages
+## Development Workflow
 
-### Unique Differentiators
-
-```mermaid
-graph TD
-    subgraph "RescueRight Advantages"
-        A[World's First Smart Choking Vest]
-        B[AI-Powered Real-time Coaching]
-        C[Medical-grade Precision]
-        D[Data-verified Certification]
-        E[Scalable B2B Model]
-    end
-    
-    subgraph "Impact"
-        F[Higher Success Rates]
-        G[Reduced Injury Risk]
-        H[Confident Responders]
-        I[Lives Saved]
-    end
-    
-    A --> F
-    B --> G
-    C --> H
-    D --> I
-    E --> I
-    
-    style A fill:#ffd700,stroke:#333,stroke-width:3px
-    style I fill:#90EE90,stroke:#333,stroke-width:3px
+### Local Development
+```bash
+npm start              # Start Expo dev server
+npm run ios            # Build for iOS simulator
+npm run android        # Build for Android emulator
+npm run typecheck      # TypeScript validation
 ```
 
-### Comparison Matrix
+### Hardware Development
+```bash
+# Arduino IDE
+# 1. Open RescueRightApp/firmware/mvp2.ino
+# 2. Select Board: ESP32 Dev Module
+# 3. Select Port: (your ESP32 port)
+# 4. Upload
 
-| Feature | RescueRight | Act+Fast Vest | CPR Mannequins | Suction Devices |
-|---------|-------------|---------------|----------------|-----------------|
-| **Force Measurement** | ✅ 0-300N ±2N | ❌ | ❌ | N/A |
-| **Position Tracking** | ✅ 1cm precision | ❌ | ❌ | N/A |
-| **Real-time Feedback** | ✅ AI-powered | ❌ | Limited | ❌ |
-| **Data Analytics** | ✅ Comprehensive | ❌ | Basic | ❌ |
-| **Certification** | ✅ Data-verified | ❌ | ❌ | N/A |
-| **Scalability** | ✅ Cloud-ready | Limited | Limited | N/A |
-| **Training Focus** | ✅ Choking rescue | ✅ | CPR only | Treatment only |
-
----
-
-## 📈 Business Model
-
-### Revenue Streams
-
-```mermaid
-graph LR
-    subgraph "Primary Revenue"
-        A[Hardware Sales<br/>$100/vest]
-        B[Software Licenses<br/>Annual subscription]
-        C[Training Packages<br/>Bulk deals]
-    end
-    
-    subgraph "Secondary Revenue"
-        D[Certification Services]
-        E[Data Analytics]
-        F[Custom Training Scenarios]
-    end
-    
-    A --> G[Projected Year 1<br/>$75,000]
-    B --> G
-    C --> G
-    
-    style A fill:#9f9,stroke:#333
-    style B fill:#99f,stroke:#333
-    style C fill:#f99,stroke:#333
+# Serial Monitor (115200 baud)
+# Verify sensor initialization and real-time data output
 ```
 
-### Go-to-Market Strategy
+### Calibration Workflow
+```bash
+# Collect calibration data (CSV format)
+# Run visualization
+python scripts/visualize_calibration.py data.csv
 
-1. **Phase 1: Singapore Launch** (Months 1-6)
-   - Partner with 3-5 training centers
-   - Pilot programs with feedback loops
-   - Refine based on user data
+# Calculate calibration constants
+npx ts-node scripts/analyze_calibration.ts data.csv
 
-2. **Phase 2: Singapore Expansion** (Months 7-12)
-   - Scale to 10% of market (150 entities)
-   - Establish certification standards
-   - Build brand recognition
-
-3. **Phase 3: ASEAN Entry** (Year 2)
-   - Regional partnerships
-   - Localized content
-   - 20x market opportunity
-
----
-
-## 🌟 Expected Impact
-
-### Quantifiable Outcomes
-
-| Metric | Current State | With RescueRight | Improvement |
-|--------|--------------|------------------|-------------|
-| **Training Effectiveness** | 47% success rate | 75%+ projected | +60% improvement |
-| **Skill Retention** | 3-6 month decline | 9-12 month retention | 2x better retention |
-| **Injury Risk** | Unknown/High | Measured & minimized | Quantified safety |
-| **Trainee Confidence** | Low | High (data-backed) | Verified competence |
-| **Instructor Efficiency** | 1:20 ratio limited | 1:50+ with AI assist | 2.5x productivity |
-
-### Social Impact
-
-```mermaid
-graph TD
-    A[RescueRight Implementation] --> B[Better Trained Responders]
-    B --> C[Faster Response Times]
-    B --> D[Correct Technique Application]
-    B --> E[Reduced Injury Risk]
-    
-    C --> F[Lives Saved]
-    D --> F
-    E --> F
-    
-    F --> G[Reduced Healthcare Burden]
-    F --> H[Family Impact Prevention]
-    F --> I[Economic Benefit]
-    
-    style A fill:#9f9,stroke:#333,stroke-width:2px
-    style F fill:#ffd700,stroke:#333,stroke-width:3px
+# Update lib/calibration.ts with new constants
 ```
 
 ---
 
-## 📞 Contact & Resources
+## Known Limitations
 
-### Team Communication
-- **Email**: idp.studentsclub.ideate@u.nus.edu
-- **Telegram**: https://t.me/ideate2025
-- **Website**: www.ideate2025.com
-
-### Key Contacts
-- **Equipment & Budget**: Alvin Poh (alvinpoh@nus.edu.sg)
-- **Electronics Lab Hours**: Mon-Fri 8:30am-6pm
-- **Required Attire**: Covered shoes and long pants for lab access
-
-### Important Documents
-- ✅ Safety Declaration Form (Completed)
-- ✅ Risk Assessment (Completed)
-- ✅ Indemnity Form (Completed)
-- ✅ Safety Quiz (Completed)
-- 📋 Item Request List (IRL) - For budget approval
-- 📋 List of Purchased Items (LPI) - For reimbursement
-- 📋 Job Request Form - For 3D printing/laser cutting
+- **Single-device connection**: One vest per app instance
+- **Local storage only**: No cloud sync (architecture supports future implementation)
+- **Manual calibration**: Requires one-time calibration per vest
+- **iOS certificate expiry**: Free Apple Developer certificates last 7 days (commercial deployment would use paid account)
 
 ---
 
-## 🚀 Next Steps
+## Future Enhancements
 
-### Immediate Actions (By October 7, 2025)
-1. ✅ Complete sensor integration
-2. ✅ Finalize MVP app development
-3. ✅ Conduct user testing sessions
-4. ✅ Design and submit A1 poster (18:00 deadline)
-5. ✅ Prepare prototype demonstration
-
-### Semifinals Preparation (October 7-15, 2025)
-1. 📋 Refine pitch based on mentor feedback
-2. 📋 Practice poster presentation
-3. 📋 Prepare prototype demonstration
-4. 📋 Anticipate judges' questions
-5. 📋 Submit finals slides if advancing (Oct 14, 18:00)
-
-### Success Metrics for Semifinals
-- **Clear problem articulation** with compelling statistics
-- **Live demonstration** of working prototype
-- **Strong market validation** with local context
-- **Differentiation clarity** vs existing solutions
-- **Scalability vision** for ASEAN expansion
+**Potential Features** (architecture designed for extensibility):
+- Cloud sync & coach dashboards
+- Multi-user profiles
+- Historical trend analysis
+- Voice-guided feedback
+- Video recording integration
+- Custom threshold configuration
+- Leaderboards & achievements
 
 ---
 
-## 💭 Final Thoughts
+## Contributing
 
-RescueRight represents more than just a training tool—it's a paradigm shift in how we prepare people to save lives. By transforming "invisible" forces into measurable, teachable moments, we're not just improving training; we're setting a new standard for emergency response preparation.
-
-Our journey from idea to prototype demonstrates the power of innovation when applied to critical human needs. With every sensor calibrated and every line of code written, we move closer to a world where no one dies from choking due to inadequate rescue attempts.
-
-**Together, we're making every rescue right.**
+This is a personal project developed as a proof of concept. For questions or collaboration inquiries, please open an issue.
 
 ---
 
-*Document Version: 1.0 | Last Updated: September 28, 2025 | IDEATE 2025 Team 8*
+## License
+
+MIT License - see [LICENSE](LICENSE) file for details
+
+---
+
+## Technical Achievements
+
+This project demonstrates:
+
+✅ **Full-stack IoT development**: Hardware (ESP32), firmware (C/C++), mobile (React Native + TypeScript)
+
+✅ **Real-time data processing**: BLE communication, noise filtering, thrust detection
+
+✅ **Professional app architecture**: Clean separation of concerns, TypeScript type safety, modular design
+
+✅ **Sensor calibration**: CSV-based calibration system with statistical analysis scripts
+
+✅ **Cross-platform deployment**: iOS and Android from single codebase
+
+✅ **Medical-grade UI/UX**: Professional design system with accessibility considerations
+
+✅ **Performance optimization**: EMA/Median filtering, efficient BLE subscriptions, <200ms latency
+
+✅ **Comprehensive documentation**: 70+ KB of technical documentation (industry-standard quality)
+
+---
+
+## Author
+
+**Kasim Zayan**
+
+- Portfolio: _(add your portfolio link)_
+- LinkedIn: _(add your LinkedIn)_
+- Email: _(add your email)_
+
+---
+
+## Acknowledgments
+
+- Built as a proof-of-concept for medical training innovation
+- Designed following medical guidelines for Heimlich maneuver technique
+- UI/UX inspired by Apple Health and medical EMR systems
+- Sensor calibration methodology based on standard metrology practices
+
+---
+
+**Project Status**: Functional MVP with production-ready code architecture
+
+**Last Updated**: November 2025
