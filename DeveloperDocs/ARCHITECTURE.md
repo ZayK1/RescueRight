@@ -22,7 +22,7 @@ RescueRight is a real-time Heimlich maneuver training system combining IoT senso
 ### Hardware Communication
 - **BLE**: react-native-ble-plx 3.5.0
 - **Data Encoding**: Base64 for binary sensor data
-- **Update Rate**: 10Hz (100ms intervals)
+- **Update Rate**: 10-20Hz (100-50ms intervals)
 
 ### Build & Deploy
 - **iOS**: Expo development builds + Xcode
@@ -38,7 +38,7 @@ RescueRight is a real-time Heimlich maneuver training system combining IoT senso
 │                      PHYSICAL HARDWARE                          │
 │  ESP32 DevKit V1 + 4x MPU6500 IMU Sensors                      │
 │  • Dual I2C buses (GPIO 21/22, GPIO 25/26)                     │
-│  • 10Hz sensor sampling and data aggregation                   │
+│  • 10-20Hz sensor sampling and data aggregation                │
 │  • BLE GATT server with 3 characteristics                      │
 └────────────────────────┬────────────────────────────────────────┘
                          │
@@ -84,7 +84,7 @@ RescueRight is a real-time Heimlich maneuver training system combining IoT senso
 
 ## Data Flow
 
-### 1. Sensor → App Pipeline
+### Sensor → App Pipeline
 
 ```typescript
 // Hardware (ESP32) → BLE Transmission
@@ -106,7 +106,7 @@ Filtered data → Thrust detection
 Session tracking → Real-time feedback
 ```
 
-### 2. Sensor Data Processing
+### Sensor Data Processing
 
 **Force Processing**:
 ```typescript
@@ -131,7 +131,7 @@ rawAngle = decodeFloat(bleCharacteristic.value)
 filteredAngle = medianFilter.update(rawAngle)  // window=5
 ```
 
-### 3. Session Lifecycle
+### Session Lifecycle
 
 ```
 User Flow:
@@ -149,7 +149,7 @@ Data Flow:
 
 ## Core Modules
 
-### `lib/bluetooth.ts` (600+ lines)
+### `lib/bluetooth.ts`
 **BluetoothManager Singleton**
 
 Key Methods:
@@ -167,7 +167,7 @@ CHAR_POSITION_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a9"
 CHAR_ANGLE_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26aa"
 ```
 
-### `hooks/useBluetoothTrainingData.ts` (350+ lines)
+### `hooks/useBluetoothTrainingData.ts`
 **Real-time Training Data Hook**
 
 Features:
@@ -197,7 +197,7 @@ interface SessionData {
 }
 ```
 
-### `lib/calibration.ts` (850+ lines)
+### `lib/calibration.ts`
 **Sensor Calibration Engine**
 
 Capabilities:
@@ -214,7 +214,6 @@ Capabilities:
 ### Home Screen (`app/index.tsx`)
 - Animated 3D vest with rotation effect (Three.js)
 - Entry point to connect flow
-- About modal
 
 ### Connect Screen (`app/connect.tsx`)
 - BLE device scanning with RSSI display
@@ -267,7 +266,7 @@ Features:
 
 ## Design System
 
-### Color Palette (Medical-Grade)
+### Color Palette
 ```typescript
 // styles/theme.ts
 PRIMARY = "#0066CC"      // Clinical blue
@@ -291,39 +290,15 @@ BACKGROUND = "#F5F7FA"   // Clinical white
 
 ## Performance Characteristics
 
-| Metric | Value | Notes |
-|--------|-------|-------|
-| BLE Update Rate | 10Hz | ESP32 transmission frequency |
-| Processing Latency | <200ms | Sensor to UI display |
-| Force Accuracy | ±5N | Post-calibration target |
-| Position Accuracy | ±2cm | Real-world measurement |
-| Angle Accuracy | ±5° | Gyroscope-based |
-| App Startup | ~2s | Cold start to home screen |
-| Session Persistence | Local | AsyncStorage, no cloud dependency |
-
----
-
-## Security & Privacy
-
-- **Data Storage**: All health data stored locally on-device
-- **Network**: No internet required for core functionality
-- **Bluetooth**: BLE pairing with standard security
-- **Permissions**: Minimal (Bluetooth, Location for Android BLE)
-
----
-
-## Scalability Considerations
-
-**Current Capacity**:
-- Single-vest connection per session
-- Local data storage only
-- No multi-user support
-
-**Future Enhancements** (Architecture-Ready):
-- Cloud sync infrastructure hooks present
-- Multi-device connection capability in BLE manager
-- Session data format supports user profiles
-- API-ready data models for backend integration
+| Metric | Value |
+|--------|-------|
+| BLE Update Rate | 10-20Hz |
+| Processing Latency | <200ms |
+| Force Accuracy | ±5N (post-calibration) |
+| Position Accuracy | ±2cm |
+| Angle Accuracy | ±5° |
+| App Startup | ~2s (cold start) |
+| Session Persistence | Local (AsyncStorage) |
 
 ---
 
@@ -338,9 +313,9 @@ BACKGROUND = "#F5F7FA"   // Clinical white
 **Project Structure**:
 ```
 RescueRightApp/
-├── app/                 # Expo Router screens
-├── components/          # React components (41 total)
-├── hooks/              # Custom hooks (2)
+├── app/                 # Expo Router screens (6 files)
+├── components/          # React components (41 files)
+├── hooks/              # Custom hooks (2 files)
 ├── lib/                # Core business logic (4 modules)
 ├── firmware/           # ESP32 Arduino code (2 files)
 ├── styles/             # Design system
@@ -358,73 +333,28 @@ npm run android          # Build Android
 
 ---
 
-## Testing Strategy
-
-**Mock Data Mode**:
-- Toggle in sensor-debug screen
-- Simulates realistic sensor values
-- Enables UI/UX testing without hardware
-
-**Hardware Integration**:
-- Real-time BLE connection testing
-- Sensor calibration validation
-- Data quality monitoring
-
-**Quality Assurance**:
-- TypeScript type checking
-- Data validation at BLE layer
-- Filter stability testing
-- Session persistence verification
-
----
-
-## Deployment
-
-**iOS**:
-- Expo development builds
-- Free Apple Developer account (7-day certificates)
-- Physical device deployment via Xcode
-
-**Android**:
-- Expo development builds
-- APK generation for sideloading
-- Google Play Store ready
-
-See `DeveloperDocs/DEPLOYMENT.md` for detailed instructions.
-
----
-
 ## Technical Decisions
 
-**Why React Native + Expo**:
+**React Native + Expo**:
 - Cross-platform support (iOS + Android from single codebase)
 - Fast iteration with hot reload
 - Strong BLE library ecosystem
 - Native performance for real-time updates
 
-**Why Singleton Pattern (BluetoothManager)**:
+**Singleton Pattern (BluetoothManager)**:
 - Single BLE connection lifecycle management
 - Prevents multiple connection attempts
 - Global state for device pairing status
 
-**Why EMA Filtering**:
+**EMA Filtering**:
 - Low computational overhead
 - Smooth real-time data without lag
 - Configurable responsiveness (α parameter)
 
-**Why Base64 for BLE**:
+**Base64 for BLE**:
 - Binary data transmission over BLE characteristics
 - Compact encoding for float32 values
 - Standard decoding in JavaScript
-
----
-
-## Known Limitations
-
-1. **Single-device connection**: One vest per app instance
-2. **Local storage only**: No cloud backup currently
-3. **Manual calibration**: Requires calibration procedure per vest
-4. **iOS certificate expiry**: Free developer certificates last 7 days
 
 ---
 
