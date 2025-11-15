@@ -47,7 +47,7 @@ Wearable IoT training system for Heimlich maneuver practice. ESP32 + 4x IMU sens
 </tr>
 </table>
 
-**Timeline**: Oct 2024 - Jan 2025 | **Team**: 5-person interdisciplinary (1 software, 1 hardware, 1 mechanical, 2 business)
+**Timeline**: July 2025 - Nov 2025 | **Team**: 5-person interdisciplinary (1 software, 1 hardware, 1 mechanical, 2 business)
 
 ---
 
