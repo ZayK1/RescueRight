@@ -1,0 +1,1 @@
+Analyze the entire codebase. Then do a deep dive analysis of @rescueright-web folder as that is the where we are gonna focus on.
