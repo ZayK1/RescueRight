@@ -2,6 +2,8 @@
  * Session Storage - Stores training session data
  */
 
+import { POSITION_TARGET } from './vestCalibration';
+
 export interface SessionData {
   id: string;
   startTime: number;
@@ -86,7 +88,7 @@ class SessionStorage {
       this.currentSession.thrustHistory = this.thrustHistory;
 
       // Calculate position accuracy (how close to center)
-      const targetPos = { x: 0.5, y: 0.45 };
+      const targetPos = POSITION_TARGET;
       const accuracies = this.thrustHistory.map((thrust) => {
         const distance = Math.sqrt(
           Math.pow(thrust.position.x - targetPos.x, 2) +

@@ -7,6 +7,7 @@ import { MetricsGrid } from '../components/analytics/MetricsGrid';
 import { TechniqueAnalysis } from '../components/analytics/TechniqueAnalysis';
 
 import { sessionStorage, SessionData } from '../lib/sessionStorage';
+import { TARGET_FORCE } from '../lib/vestCalibration';
 import { theme } from '../styles/theme';
 
 export default function AnalyticsScreen() {
@@ -44,7 +45,7 @@ export default function AnalyticsScreen() {
     let score = 0;
 
     // Force quality (40 points)
-    const targetForce = { min: 20, max: 60 };
+    const targetForce = TARGET_FORCE;
     if (sessionData.averageForce >= targetForce.min && sessionData.averageForce <= targetForce.max) {
       score += 40;
     } else if (sessionData.averageForce > 0) {
@@ -113,7 +114,7 @@ export default function AnalyticsScreen() {
     const feedback: Array<{ type: 'success' | 'warning' | 'error'; message: string; detail: string }> = [];
 
     // Force feedback
-    const targetForce = { min: 20, max: 60 };
+    const targetForce = TARGET_FORCE;
     if (sessionData.averageForce >= targetForce.min && sessionData.averageForce <= targetForce.max) {
       feedback.push({
         type: 'success',

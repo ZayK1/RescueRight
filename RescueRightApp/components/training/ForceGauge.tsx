@@ -73,9 +73,11 @@ export function ForceGauge({ force, targetMin, targetMax }: ForceGaugeProps) {
     };
   }, [force, displayedForce]);
 
-  // Update progress animation based on displayed force
+  // Update progress animation based on displayed force.
+  // Gauge spans 0–100N so the 40–65N optimal band sits clearly in the middle.
+  const GAUGE_MAX = 100;
   useEffect(() => {
-    const normalizedProgress = Math.min(Math.max(displayedForce / 200, 0), 1);
+    const normalizedProgress = Math.min(Math.max(displayedForce / GAUGE_MAX, 0), 1);
     progress.value = withSpring(normalizedProgress, {
       damping: 15,
       stiffness: 80,
@@ -92,10 +94,12 @@ export function ForceGauge({ force, targetMin, targetMax }: ForceGaugeProps) {
   });
 
   const getStatus = () => {
-    if (displayedForce < 60) return { text: 'Too Low', color: '#EF4444', bgColor: 'rgba(239, 68, 68, 0.1)' };
-    if (displayedForce < targetMin) return { text: 'Low', color: '#F59E0B', bgColor: 'rgba(245, 158, 11, 0.1)' };
+    // Three clear zones against the training target band (targetMin–targetMax):
+    //   below  -> Too Low (ineffective), amber
+    //   within -> Optimal, green
+    //   above  -> Too High (injury risk), red
+    if (displayedForce < targetMin) return { text: 'Too Low', color: '#F59E0B', bgColor: 'rgba(245, 158, 11, 0.1)' };
     if (displayedForce <= targetMax) return { text: 'Optimal', color: '#10B981', bgColor: 'rgba(16, 185, 129, 0.1)' };
-    if (displayedForce <= 150) return { text: 'High', color: '#F59E0B', bgColor: 'rgba(245, 158, 11, 0.1)' };
     return { text: 'Too High', color: '#EF4444', bgColor: 'rgba(239, 68, 68, 0.1)' };
   };
 

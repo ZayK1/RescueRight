@@ -51,8 +51,8 @@ export const mockDevices: BluetoothDevice[] = [
 
 // Mock real-time training data for Heimlich maneuver
 export const mockTrainingData: TrainingMetrics = {
-  compressionDepth: 95, // Target: 80-120N for abdominal thrusts
-  compressionRate: 105, // Target: 90-120 thrusts per minute
+  compressionDepth: 55, // Target: 40-65N for abdominal thrusts (see vestCalibration)
+  compressionRate: 8, // thrusts per minute (deliberate Heimlich thrusts)
   handPosition: 'correct',
   recoilComplete: true,
   timestamp: Date.now(),
@@ -70,8 +70,8 @@ export const mockSessionSummary: SessionSummary = {
 
 // Simulate real-time sensor updates for Heimlich maneuver
 export function generateRandomMetrics(): TrainingMetrics {
-  const force = 60 + Math.random() * 60; // 60-120N (Heimlich force range)
-  const rate = 90 + Math.random() * 40; // 90-130 thrusts per minute
+  const force = 35 + Math.random() * 35; // 35-70N (spans the 40-65N target band)
+  const rate = 6 + Math.random() * 6; // 6-12 deliberate thrusts per minute
 
   let handPosition: 'correct' | 'too-high' | 'too-low' | 'too-left' | 'too-right';
   const rand = Math.random();

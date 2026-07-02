@@ -3,6 +3,7 @@ import { View, StyleSheet, StatusBar } from 'react-native';
 import { VestAnimation3D } from '../components/home/VestAnimation3D';
 import { HomeButtons } from '../components/home/HomeButtons';
 import { DevBypassButton } from '../components/shared/DevBypassButton';
+import { SelfTestButton } from '../components/shared/SelfTestButton';
 
 export default function HomeScreen() {
   const [showButtons, setShowButtons] = useState(false);
@@ -22,6 +23,9 @@ export default function HomeScreen() {
 
       {/* Buttons at bottom */}
       <HomeButtons visible={showButtons} />
+
+      {/* Subtle self-test: runs the whole flow on mock data (top-left) */}
+      <SelfTestButton />
 
       {/* Dev Bypass */}
       <DevBypassButton nextScreen="connect" />

@@ -2,18 +2,36 @@ import { BleManager, Device, State } from 'react-native-ble-plx';
 import { Platform, PermissionsAndroid } from 'react-native';
 import { decode as base64Decode } from 'base-64';
 
-// ESP32 Service and Characteristic UUIDs
-// These should match your ESP32 firmware configuration
-const SERVICE_UUID = '4fafc201-1fb5-459e-8fcc-c5c9c331914b';
-const CHAR_FORCE_UUID = 'beb5483e-36e1-4688-b7f5-ea07361b26a8';
-const CHAR_POSITION_UUID = 'beb5483e-36e1-4688-b7f5-ea07361b26a9';
-const CHAR_ANGLE_UUID = 'beb5483e-36e1-4688-b7f5-ea07361b26aa';
+// ============================================================================
+// RescueRight Smart Vest — BLE layer
+//
+// The v2 sensor pad (Feather ESP32 + PCA9548A + 5x LIS3MDL/LSM6DSOX boards)
+// streams ONE notify characteristic containing a plain comma-separated text
+// line per sample. Keeping it as text makes it trivial for the firmware team
+// to emit and easy to inspect in a BLE scanner (nRF Connect / LightBlue).
+//
+// Frame format (see docs/FIRMWARE_BLE_CONTRACT.md):
+//   "m0,m1,m2,m3[,tx,ty[,seq]]"
+//     m0..m3 = RAW magnetometer magnitude (µT) per corner,
+//              order TOP_LEFT, TOP_RIGHT, BOTTOM_LEFT, BOTTOM_RIGHT  (required)
+//     tx,ty  = accel components for thrust angle                     (optional)
+//     seq    = packet counter, for dropped-frame detection           (optional)
+//
+// The firmware sends RAW numbers — the app captures its own baseline and does
+// all interpretation (force / position / angle). Minimum viable frame is just
+// the 4 corner magnitudes; tilt and seq can be omitted.
+// ============================================================================
 
-export interface SensorData {
-  force: number;
-  position: { x: number; y: number };
-  angle: number;
-  timestamp: number;
+const SERVICE_UUID = '4fafc201-1fb5-459e-8fcc-c5c9c331914b';
+// New single characteristic that carries the whole sensor frame as text.
+const CHAR_SENSOR_FRAME_UUID = 'beb5483e-36e1-4688-b7f5-ea07361b26b0';
+
+export interface SensorFrame {
+  mag: number[]; // [TL, TR, BL, BR] RAW magnetometer magnitude, µT (app baselines)
+  tiltX: number; // accel component for angle (0 if firmware omits it)
+  tiltY: number;
+  seq: number; // packet counter (0 if firmware omits it)
+  timestamp: number; // phone receipt time (ms)
 }
 
 class BluetoothManager {
@@ -76,9 +94,8 @@ class BluetoothManager {
   }
 
   /**
-   * Scan for RescueRight smart vest devices
-   * @param onDeviceFound Callback when a device is discovered
-   * @param durationMs Scan duration in milliseconds (default: 10 seconds)
+   * Scan for RescueRight smart vest devices.
+   * The firmware must advertise a name starting with "RescueRight".
    */
   async scanForDevices(
     onDeviceFound: (device: Device) => void,
@@ -102,7 +119,6 @@ class BluetoothManager {
           return;
         }
 
-        // Filter for RescueRight vests and avoid duplicates
         if (device?.name?.startsWith('RescueRight') && !discoveredDevices.has(device.id)) {
           discoveredDevices.add(device.id);
           console.log('Found device:', device.name, 'RSSI:', device.rssi);
@@ -110,7 +126,6 @@ class BluetoothManager {
         }
       });
 
-      // Auto-stop scan after duration
       setTimeout(() => {
         this.stopScan();
       }, durationMs);
@@ -133,7 +148,6 @@ class BluetoothManager {
 
   /**
    * Connect to a specific device
-   * @param deviceId The device ID to connect to
    */
   async connect(deviceId: string): Promise<boolean> {
     try {
@@ -149,7 +163,6 @@ class BluetoothManager {
       this.device = device;
       console.log('Device ready for communication');
 
-      // Setup disconnect listener
       device.onDisconnected((error, disconnectedDevice) => {
         console.log('Device disconnected:', disconnectedDevice?.name);
         if (error) {
@@ -181,10 +194,10 @@ class BluetoothManager {
   }
 
   /**
-   * Subscribe to force sensor data
-   * @param callback Function to call with new force readings
+   * Subscribe to the vest's sensor-frame stream.
+   * Calls back with a parsed SensorFrame for every valid notification.
    */
-  async subscribeToForce(callback: (force: number) => void): Promise<void> {
+  async subscribeToSensorFrame(callback: (frame: SensorFrame) => void): Promise<void> {
     if (!this.device) {
       console.error('No device connected');
       return;
@@ -193,138 +206,23 @@ class BluetoothManager {
     try {
       this.device.monitorCharacteristicForService(
         SERVICE_UUID,
-        CHAR_FORCE_UUID,
+        CHAR_SENSOR_FRAME_UUID,
         (error, characteristic) => {
           if (error) {
-            console.error('Force monitoring error:', error);
+            console.error('Sensor frame monitoring error:', error);
             return;
           }
 
           if (characteristic?.value) {
-            const force = this.decodeFloat(characteristic.value);
-            callback(force);
+            const frame = this.parseSensorFrame(characteristic.value);
+            if (frame) callback(frame);
           }
         }
       );
-      console.log('Subscribed to force sensor');
+      console.log('Subscribed to sensor frame');
     } catch (error) {
-      console.error('Error subscribing to force:', error);
+      console.error('Error subscribing to sensor frame:', error);
     }
-  }
-
-  /**
-   * Subscribe to position sensor data
-   * @param callback Function to call with new position readings (x, y normalized 0-1)
-   */
-  async subscribeToPosition(callback: (x: number, y: number) => void): Promise<void> {
-    if (!this.device) {
-      console.error('No device connected');
-      return;
-    }
-
-    try {
-      this.device.monitorCharacteristicForService(
-        SERVICE_UUID,
-        CHAR_POSITION_UUID,
-        (error, characteristic) => {
-          if (error) {
-            console.error('Position monitoring error:', error);
-            return;
-          }
-
-          if (characteristic?.value) {
-            const [x, y] = this.decodePosition(characteristic.value);
-            callback(x, y);
-          }
-        }
-      );
-      console.log('Subscribed to position sensor');
-    } catch (error) {
-      console.error('Error subscribing to position:', error);
-    }
-  }
-
-  /**
-   * Subscribe to angle sensor data
-   * @param callback Function to call with new angle readings
-   */
-  async subscribeToAngle(callback: (angle: number) => void): Promise<void> {
-    if (!this.device) {
-      console.error('No device connected');
-      return;
-    }
-
-    try {
-      this.device.monitorCharacteristicForService(
-        SERVICE_UUID,
-        CHAR_ANGLE_UUID,
-        (error, characteristic) => {
-          if (error) {
-            console.error('Angle monitoring error:', error);
-            return;
-          }
-
-          if (characteristic?.value) {
-            const angle = this.decodeFloat(characteristic.value);
-            callback(angle);
-          }
-        }
-      );
-      console.log('Subscribed to angle sensor');
-    } catch (error) {
-      console.error('Error subscribing to angle:', error);
-    }
-  }
-
-  /**
-   * Subscribe to all sensor data at once
-   * @param callback Function to call with complete sensor data
-   */
-  async subscribeToAllSensors(callback: (data: Partial<SensorData>) => void): Promise<void> {
-    const sensorData: Partial<SensorData> = {};
-    let lastLogTime = 0;
-
-    await this.subscribeToForce((force) => {
-      sensorData.force = force;
-      sensorData.timestamp = Date.now();
-
-      // Throttled logging (every 2 seconds)
-      const now = Date.now();
-      if (now - lastLogTime > 2000) {
-        console.log('[BLE] Force received:', force.toFixed(1), 'N');
-        lastLogTime = now;
-      }
-
-      callback({ ...sensorData });
-    });
-
-    await this.subscribeToPosition((x, y) => {
-      sensorData.position = { x, y };
-      sensorData.timestamp = Date.now();
-
-      // Throttled logging (every 2 seconds)
-      const now = Date.now();
-      if (now - lastLogTime > 2000) {
-        console.log('[BLE] Position received:', x.toFixed(2), y.toFixed(2));
-        lastLogTime = now;
-      }
-
-      callback({ ...sensorData });
-    });
-
-    await this.subscribeToAngle((angle) => {
-      sensorData.angle = angle;
-      sensorData.timestamp = Date.now();
-
-      // Throttled logging (every 2 seconds)
-      const now = Date.now();
-      if (now - lastLogTime > 2000) {
-        console.log('[BLE] Angle received:', angle.toFixed(1), '°');
-        lastLogTime = now;
-      }
-
-      callback({ ...sensorData });
-    });
   }
 
   /**
@@ -358,34 +256,37 @@ class BluetoothManager {
   // Helper Methods
 
   /**
-   * Decode base64 encoded float value
+   * Parse a base64 BLE value holding a comma-separated sensor frame:
+   *   "m0,m1,m2,m3,tx,ty,seq"
+   * Returns null if the line is malformed (so bad frames are simply skipped).
    */
-  private decodeFloat(base64: string): number {
+  private parseSensorFrame(base64: string): SensorFrame | null {
     try {
-      const decoded = base64Decode(base64);
-      const bytes = new Uint8Array(decoded.split('').map((c) => c.charCodeAt(0)));
-      const view = new DataView(bytes.buffer);
-      return view.getFloat32(0, true); // true = little-endian
-    } catch (error) {
-      console.error('Error decoding float:', error);
-      return 0;
-    }
-  }
+      const text = base64Decode(base64).trim();
+      if (!text) return null;
 
-  /**
-   * Decode base64 encoded position (2 floats: x, y)
-   */
-  private decodePosition(base64: string): [number, number] {
-    try {
-      const decoded = base64Decode(base64);
-      const bytes = new Uint8Array(decoded.split('').map((c) => c.charCodeAt(0)));
-      const view = new DataView(bytes.buffer);
-      const x = view.getFloat32(0, true);
-      const y = view.getFloat32(4, true);
-      return [x, y];
+      const parts = text.split(',');
+      // Minimum viable frame = the 4 corner magnetometer magnitudes.
+      if (parts.length < 4) return null;
+
+      const nums = parts.map((p) => parseFloat(p));
+      if (nums.slice(0, 4).some((n) => Number.isNaN(n))) return null;
+
+      // Tilt (accel) and seq are optional; default to 0 when absent.
+      const tiltX = parts.length >= 6 && !Number.isNaN(nums[4]) ? nums[4] : 0;
+      const tiltY = parts.length >= 6 && !Number.isNaN(nums[5]) ? nums[5] : 0;
+      const seq = parts.length >= 7 && !Number.isNaN(nums[6]) ? nums[6] : 0;
+
+      return {
+        mag: [nums[0], nums[1], nums[2], nums[3]],
+        tiltX,
+        tiltY,
+        seq,
+        timestamp: Date.now(),
+      };
     } catch (error) {
-      console.error('Error decoding position:', error);
-      return [0, 0];
+      console.error('Error parsing sensor frame:', error);
+      return null;
     }
   }
 }

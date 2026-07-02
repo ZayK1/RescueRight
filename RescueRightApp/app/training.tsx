@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { StatusHeader } from '../components/training/StatusHeader';
 import { HeatmapModule } from '../components/training/HeatmapModule';
 import { ForceGauge } from '../components/training/ForceGauge';
@@ -8,6 +8,7 @@ import { FeedbackCard } from '../components/training/FeedbackCard';
 
 import { useBluetoothTrainingData } from '../hooks/useBluetoothTrainingData';
 import { sessionStorage } from '../lib/sessionStorage';
+import { TARGET_FORCE, POSITION_TARGET } from '../lib/vestCalibration';
 import { theme } from '../styles/theme';
 
 const getFeedbackType = (feedback: string): 'success' | 'info' | 'error' => {
@@ -17,8 +18,8 @@ const getFeedbackType = (feedback: string): 'success' | 'info' | 'error' => {
 };
 
 const getPositionStatus = (position: { x: number; y: number }): 'correct' | 'too-high' | 'too-low' | 'too-left' | 'too-right' => {
-  const targetX = 0.5;
-  const targetY = 0.45;
+  const targetX = POSITION_TARGET.x;
+  const targetY = POSITION_TARGET.y;
   const threshold = 0.08; // 8% deviation tolerance (more sensitive)
 
   const xDiff = position.x - targetX;
@@ -39,28 +40,34 @@ const getPositionStatus = (position: { x: number; y: number }): 'correct' | 'too
 
 export default function TrainingScreen() {
   const router = useRouter();
-  // Use the real bluetooth data hook
-  const data = useBluetoothTrainingData(false);
+  // ?mock=1 (from the home-screen self-test button) runs the whole flow on
+  // simulated sensor data, so the app can be verified without the vest.
+  const { mock } = useLocalSearchParams<{ mock?: string }>();
+  const useMock = mock === '1';
+  const data = useBluetoothTrainingData(useMock);
+
+  // Session is "active" when connected to the vest OR running the mock self-test.
+  const active = data.isConnected || useMock;
 
   // Add a local timer since the hook doesn't provide it
   const [duration, setDuration] = useState(0);
   const [startTime, setStartTime] = useState<number | null>(null);
 
   useEffect(() => {
-    if (data.isConnected && !startTime) {
+    if (active && !startTime) {
       setStartTime(Date.now());
     }
-  }, [data.isConnected, startTime]);
+  }, [active, startTime]);
 
   useEffect(() => {
-    if (data.isConnected && startTime) {
+    if (active && startTime) {
       const timer = setInterval(() => {
         const elapsed = Math.floor((Date.now() - startTime) / 1000);
         setDuration(elapsed);
       }, 1000);
       return () => clearInterval(timer);
     }
-  }, [data.isConnected, startTime]);
+  }, [active, startTime]);
 
   // Log data updates for debugging (throttled)
   useEffect(() => {
@@ -68,7 +75,7 @@ export default function TrainingScreen() {
       if (data.isConnected) {
         const posStatus = getPositionStatus(data.handPosition);
         console.log('[Training UI Update]', {
-          force: data.compressionDepth?.toFixed(1) + 'N',
+          force: data.force?.toFixed(1) + 'N',
           thrusts: data.thrusts,
           rate: data.compressionRate + '/min',
           position: `(${data.handPosition?.x?.toFixed(2)}, ${data.handPosition?.y?.toFixed(2)})`,
@@ -91,9 +98,9 @@ export default function TrainingScreen() {
   const feedbackMessage = data.feedback || "Waiting for vest data...";
   const feedbackType = getFeedbackType(feedbackMessage);
 
-  // Adjusted target range for current calibration (will be refined)
-  const targetMin = 20; // N (Newtons) - adjusted for prototype
-  const targetMax = 60; // N (Newtons) - adjusted for prototype
+  // Clinical training band (see lib/vestCalibration.ts) — single source of truth.
+  const targetMin = TARGET_FORCE.min; // 40 N
+  const targetMax = TARGET_FORCE.max; // 65 N
 
   return (
     <View style={styles.container}>
@@ -107,11 +114,11 @@ export default function TrainingScreen() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.module}>
           <Text style={styles.moduleTitle}>Hand Position</Text>
-          <HeatmapModule position={getPositionStatus(data.handPosition)} force={data.compressionDepth} />
+          <HeatmapModule position={getPositionStatus(data.handPosition)} force={data.force} />
         </View>
         <View style={styles.module}>
           <Text style={styles.moduleTitle}>Thrust Force</Text>
-          <ForceGauge force={data.compressionDepth} targetMin={targetMin} targetMax={targetMax} />
+          <ForceGauge force={data.force} targetMin={targetMin} targetMax={targetMax} />
         </View>
         <View style={styles.module}>
           <Text style={styles.moduleTitle}>Live Feedback</Text>
@@ -135,7 +142,7 @@ export default function TrainingScreen() {
         </View>
         <View style={styles.statDivider} />
         <View style={styles.statItem}>
-          <Text style={styles.statItemValue}>{data.compressionDepth.toFixed(0)}N</Text>
+          <Text style={styles.statItemValue}>{data.force.toFixed(0)}N</Text>
           <Text style={styles.statItemLabel}>Peak Force</Text>
         </View>
       </View>

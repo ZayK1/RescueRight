@@ -67,9 +67,12 @@ export default function SensorDebugScreen() {
     const interval = setInterval(() => {
       const logEntry = {
         timestamp: Date.now(),
-        force: trainingData.compressionDepth,
-        rawForce: trainingData.rawForce || 0,
-        filteredForce: trainingData.filteredForce || 0,
+        force: trainingData.force,
+        sumMagDelta: trainingData.sumMagDelta || 0,
+        magTL: trainingData.rawMagDelta?.[0] ?? 0,
+        magTR: trainingData.rawMagDelta?.[1] ?? 0,
+        magBL: trainingData.rawMagDelta?.[2] ?? 0,
+        magBR: trainingData.rawMagDelta?.[3] ?? 0,
         positionX: trainingData.handPosition.x,
         positionY: trainingData.handPosition.y,
         angle: trainingData.angle,
@@ -128,27 +131,25 @@ export default function SensorDebugScreen() {
         <View style={styles.metricContainer}>
           <View style={styles.metricHeader}>
             <Text style={styles.metricLabel}>Force</Text>
-            <Text style={styles.metricValue}>{trainingData.compressionDepth.toFixed(1)} N</Text>
+            <Text style={styles.metricValue}>{trainingData.force.toFixed(1)} N</Text>
           </View>
           <View style={styles.progressBar}>
-            <View style={[styles.progressFill, styles.progressBlue, { width: `${Math.min((trainingData.compressionDepth / 200) * 100, 100)}%` }]} />
+            <View style={[styles.progressFill, styles.progressBlue, { width: `${Math.min((trainingData.force / 100) * 100, 100)}%` }]} />
           </View>
-          {trainingData.rawForce !== undefined && (
-            <View style={styles.metricDetails}>
-              <Text style={styles.metricDetailText}>Raw: {trainingData.rawForce.toFixed(1)} N</Text>
-              <Text style={styles.metricDetailText}>Filtered: {trainingData.filteredForce?.toFixed(1)} N</Text>
-            </View>
-          )}
         </View>
 
-        {/* Compression Depth */}
+        {/* Raw corner signal — press on a force scale and tune FORCE_GAIN so a
+            firm thrust reads ~55 N. See lib/vestCalibration.ts */}
         <View style={styles.metricContainer}>
           <View style={styles.metricHeader}>
-            <Text style={styles.metricLabel}>Compression Depth</Text>
-            <Text style={styles.metricValue}>{(trainingData.compressionDepth * 0.05).toFixed(1)} cm</Text>
+            <Text style={styles.metricLabel}>Σ magDelta (raw)</Text>
+            <Text style={styles.metricValue}>{(trainingData.sumMagDelta ?? 0).toFixed(1)} µT</Text>
           </View>
-          <View style={styles.progressBar}>
-            <View style={[styles.progressFill, styles.progressGreen, { width: `${Math.min(((trainingData.compressionDepth * 0.05) / 6) * 100, 100)}%` }]} />
+          <View style={styles.metricDetails}>
+            <Text style={styles.metricDetailText}>TL {(trainingData.rawMagDelta?.[0] ?? 0).toFixed(1)}</Text>
+            <Text style={styles.metricDetailText}>TR {(trainingData.rawMagDelta?.[1] ?? 0).toFixed(1)}</Text>
+            <Text style={styles.metricDetailText}>BL {(trainingData.rawMagDelta?.[2] ?? 0).toFixed(1)}</Text>
+            <Text style={styles.metricDetailText}>BR {(trainingData.rawMagDelta?.[3] ?? 0).toFixed(1)}</Text>
           </View>
         </View>
 
@@ -204,49 +205,13 @@ export default function SensorDebugScreen() {
           <Text style={styles.metricLabel}>Total Thrusts</Text>
           <Text style={styles.thrustCount}>{trainingData.thrusts}</Text>
         </View>
-      </View>
 
-      {/* Data Quality */}
-      {trainingData.dataQuality && (
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.cardTitle}>Data Quality</Text>
-            {trainingData.dataQuality.isValid ? (
-              <CheckCircle size={24} color={theme.colors.success} />
-            ) : (
-              <AlertTriangle size={24} color={theme.colors.warning} />
-            )}
-          </View>
-
-          <View style={styles.metricHeader}>
-            <Text style={styles.labelText}>Confidence</Text>
-            <Text style={styles.metricValue}>{(trainingData.dataQuality.confidence * 100).toFixed(1)}%</Text>
-          </View>
-
-          <View style={styles.progressBar}>
-            <View
-              style={[
-                styles.progressFill,
-                trainingData.dataQuality.confidence > 0.8
-                  ? styles.progressGreen
-                  : trainingData.dataQuality.confidence > 0.6
-                  ? styles.progressYellow
-                  : styles.progressRed,
-                { width: `${trainingData.dataQuality.confidence * 100}%` },
-              ]}
-            />
-          </View>
-
-          {trainingData.dataQuality.issues.length > 0 && (
-            <View style={styles.issuesContainer}>
-              <Text style={styles.issuesTitle}>Issues Detected:</Text>
-              {trainingData.dataQuality.issues.map((issue, idx) => (
-                <Text key={idx} style={styles.issueText}>• {issue}</Text>
-              ))}
-            </View>
-          )}
+        {/* Frame reliability */}
+        <View style={styles.metricHeader}>
+          <Text style={styles.metricLabel}>Frames dropped</Text>
+          <Text style={styles.metricValue}>{trainingData.droppedFrames ?? 0}</Text>
         </View>
-      )}
+      </View>
 
       {/* Feedback */}
       <View style={styles.card}>

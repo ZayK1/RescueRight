@@ -1,40 +1,52 @@
 import { useState, useEffect, useRef } from 'react';
-import { bluetoothManager, SensorData } from '../lib/bluetooth';
-import {
-  EMAFilter,
-  MedianFilter,
-  DataQuality,
-} from '../lib/calibration';
+import { bluetoothManager, SensorFrame } from '../lib/bluetooth';
+import { EMAFilter, MedianFilter } from '../lib/calibration';
 import { sessionStorage } from '../lib/sessionStorage';
+import {
+  magDeltaToForce,
+  sumMagDelta,
+  computeLocation,
+  computeAngle,
+  TARGET_FORCE,
+  POSITION_TARGET,
+  POSITION_TOLERANCE,
+  IDLE_FORCE_N,
+  THRUST_DETECT_N,
+} from '../lib/vestCalibration';
+
+// Number of at-rest samples averaged to establish the magnetometer baseline.
+const BASELINE_FRAMES = 15;
 
 export interface TrainingData {
-  compressionDepth: number;
-  compressionRate: number;
+  force: number; // Newtons — headline metric, derived from the pad
+  compressionRate: number; // thrusts per minute
   handPosition: { x: number; y: number };
-  angle: number;
+  angle: number; // degrees
   feedback: string;
   thrusts: number;
   isConnected: boolean;
-  dataQuality?: DataQuality; // Added quality metrics
-  rawForce?: number; // For debugging
-  filteredForce?: number; // For debugging
+  // Debugging / calibration aids (used by the Sensor Debug screen)
+  rawMagDelta?: number[];
+  sumMagDelta?: number;
+  seq?: number;
+  droppedFrames?: number;
 }
 
 /**
- * Custom hook to manage real-time training data from Bluetooth vest
- * Falls back to mock data if not connected
+ * Real-time training data from the RescueRight vest.
  *
- * Now includes:
- * - Data validation and quality assessment
- * - Noise filtering (EMA + Median filters)
- * - Diagnostic logging
- * - Calibration integration
+ * Pipeline (all interpretation lives in the app, see lib/vestCalibration.ts):
+ *   BLE SensorFrame (magDelta[4], tilt)  ->  smoothing  ->  force / position /
+ *   angle  ->  thrust detection  ->  feedback + session recording.
+ *
+ * Pass useMockData=true to run the whole flow off a simulated stream (dev tool
+ * and demo safety net if BLE misbehaves).
  */
 export function useBluetoothTrainingData(useMockData: boolean = false) {
   const [data, setData] = useState<TrainingData>({
-    compressionDepth: 0,
+    force: 0,
     compressionRate: 0,
-    handPosition: { x: 0.5, y: 0.45 },
+    handPosition: { x: POSITION_TARGET.x, y: POSITION_TARGET.y },
     angle: 0,
     feedback: 'Waiting for vest data...',
     thrusts: 0,
@@ -42,190 +54,146 @@ export function useBluetoothTrainingData(useMockData: boolean = false) {
   });
 
   const [error, setError] = useState<string | null>(null);
+
+  // Thrust detection + rate
   const thrustsCountRef = useRef(0);
   const lastForceRef = useRef(0);
-  const forceHistoryRef = useRef<number[]>([]);
+  const thrustTimesRef = useRef<number[]>([]);
   const lastThrustTimeRef = useRef(0);
 
-  // Data filtering
-  const forceFilterRef = useRef(new EMAFilter(0.3)); // Smooth force readings
-  const positionXFilterRef = useRef(new EMAFilter(0.2)); // Smooth position
-  const positionYFilterRef = useRef(new EMAFilter(0.2));
-  const angleFilterRef = useRef(new MedianFilter(5)); // Remove angle outliers
+  // Frame reliability
+  const lastSeqRef = useRef<number | null>(null);
+  const droppedFramesRef = useRef(0);
 
-  // Data validation
-  const invalidDataCountRef = useRef(0);
-  const totalDataCountRef = useRef(0);
+  // App-side auto-baseline: average the first frames after connecting (pad
+  // assumed at rest) and subtract thereafter. Makes the app robust regardless
+  // of whether the firmware does its own baseline subtraction.
+  const baselineRef = useRef<number[] | null>(null);
+  const baselineBufRef = useRef<number[][]>([]);
+
+  // Signal smoothing
+  const forceFilterRef = useRef(new EMAFilter(0.4)); // responsive force
+  const positionXFilterRef = useRef(new EMAFilter(0.25));
+  const positionYFilterRef = useRef(new EMAFilter(0.25));
+  const angleFilterRef = useRef(new MedianFilter(5)); // reject angle outliers
 
   useEffect(() => {
     if (useMockData) {
-      // Use mock data simulation
       return startMockDataSimulation();
     }
 
-    // Real Bluetooth data
     if (!bluetoothManager.isConnected()) {
       setError('Vest not connected. Please connect to your RescueRight vest.');
       return;
     }
 
     setData((prev) => ({ ...prev, isConnected: true }));
-
-    // Start session tracking
     sessionStorage.startSession();
 
-    // Subscribe to all sensor data
-    const subscribeToSensors = async () => {
+    const subscribe = async () => {
       try {
-        await bluetoothManager.subscribeToAllSensors((sensorData: Partial<SensorData>) => {
-          totalDataCountRef.current += 1;
-
-          setData((prev) => {
-            const updated = { ...prev };
-
-            // === DATA VALIDATION ===
-            const rawForce = sensorData.force ?? 0;
-            const rawPosition = sensorData.position ?? prev.handPosition;
-            const rawAngle = sensorData.angle ?? prev.angle;
-
-            // Validate data ranges
-            const isValidForce = rawForce >= 0 && rawForce <= 500; // Max 500N
-            const isValidPosition =
-              rawPosition.x >= 0 &&
-              rawPosition.x <= 1 &&
-              rawPosition.y >= 0 &&
-              rawPosition.y <= 1;
-            const isValidAngle = Math.abs(rawAngle) <= 180;
-
-            if (!isValidForce || !isValidPosition || !isValidAngle) {
-              invalidDataCountRef.current += 1;
-
-              // Log validation failures (throttled to every 10th failure)
-              if (invalidDataCountRef.current % 10 === 0) {
-                console.warn('[Data Validation] Invalid data detected:', {
-                  force: rawForce,
-                  position: rawPosition,
-                  angle: rawAngle,
-                  validForce: isValidForce,
-                  validPosition: isValidPosition,
-                  validAngle: isValidAngle,
-                  failureRate: (invalidDataCountRef.current / totalDataCountRef.current).toFixed(2),
-                });
-              }
-
-              // Skip processing invalid data
-              return prev;
-            }
-
-            // === DATA FILTERING ===
-            const filteredForce = forceFilterRef.current.filter(rawForce) * 0.25;
-            const filteredPositionX = positionXFilterRef.current.filter(rawPosition.x);
-            const filteredPositionY = positionYFilterRef.current.filter(rawPosition.y);
-            const filteredAngle = angleFilterRef.current.filter(rawAngle);
-
-            // === UPDATE STATE ===
-            if (sensorData.force !== undefined) {
-              // Pass the filtered force directly to UI - let UI components handle peak-hold/decay
-              updated.compressionDepth = filteredForce;
-              updated.rawForce = rawForce; // For debugging
-              updated.filteredForce = filteredForce; // For debugging
-
-              // Detect thrust (force spike above threshold)
-              if (detectThrust(filteredForce)) {
-                thrustsCountRef.current += 1;
-                updated.thrusts = thrustsCountRef.current;
-
-                // Record thrust in session storage
-                sessionStorage.recordThrust(
-                  filteredForce,
-                  { x: filteredPositionX, y: filteredPositionY },
-                  filteredAngle
-                );
-              }
-
-              // Calculate compression rate
-              updated.compressionRate = calculateCompressionRate();
-
-              // Update session stats
-              sessionStorage.updateStats(filteredForce, updated.compressionRate);
-
-              // Update feedback
-              updated.feedback = generateFeedback(
-                filteredForce,
-                { x: filteredPositionX, y: filteredPositionY },
-                filteredAngle
-              );
-            }
-
-            // Update hand position
-            if (sensorData.position) {
-              updated.handPosition = {
-                x: filteredPositionX,
-                y: filteredPositionY,
-              };
-            }
-
-            // Update angle
-            if (sensorData.angle !== undefined) {
-              updated.angle = filteredAngle;
-            }
-
-            // === DIAGNOSTIC LOGGING (every 100 samples = ~10 seconds) ===
-            if (totalDataCountRef.current % 100 === 0) {
-              console.log('[Sensor Data]', {
-                sampleCount: totalDataCountRef.current,
-                invalidCount: invalidDataCountRef.current,
-                dataQualityRate: (
-                  ((totalDataCountRef.current - invalidDataCountRef.current) /
-                    totalDataCountRef.current) *
-                  100
-                ).toFixed(1) + '%',
-                currentForce: filteredForce.toFixed(1),
-                currentPosition: {
-                  x: filteredPositionX.toFixed(3),
-                  y: filteredPositionY.toFixed(3),
-                },
-                currentAngle: filteredAngle.toFixed(1),
-              });
-            }
-
-            return updated;
-          });
+        await bluetoothManager.subscribeToSensorFrame((frame: SensorFrame) => {
+          processFrame(frame);
         });
       } catch (err) {
-        console.error('Error subscribing to sensors:', err);
+        console.error('Error subscribing to vest:', err);
         setError('Failed to receive data from vest');
       }
     };
 
-    subscribeToSensors();
+    subscribe();
 
-    // Cleanup
     return () => {
-      // Subscriptions are managed by BLE library
+      // BLE subscriptions are cleaned up by the library on disconnect.
     };
   }, [useMockData]);
 
   /**
-   * Detect if a thrust occurred based on force spike
+   * Turn one raw sensor frame into displayed metrics.
+   */
+  const processFrame = (frame: SensorFrame) => {
+    // Basic validity: all corner values must be finite.
+    if (!frame.mag.every((m) => Number.isFinite(m))) return;
+
+    // Capture baseline from the first BASELINE_FRAMES samples, then subtract.
+    // If the firmware already subtracts its own baseline, this captures ~0 and
+    // is a harmless no-op.
+    if (baselineRef.current === null) {
+      baselineBufRef.current.push(frame.mag);
+      if (baselineBufRef.current.length >= BASELINE_FRAMES) {
+        const buf = baselineBufRef.current;
+        baselineRef.current = [0, 1, 2, 3].map(
+          (i) => buf.reduce((s, f) => s + f[i], 0) / buf.length
+        );
+      }
+      setData((prev) => ({
+        ...prev,
+        isConnected: true,
+        feedback: 'Calibrating baseline — keep the pad still…',
+      }));
+      return;
+    }
+
+    const magDelta = frame.mag.map((m, i) => Math.max(0, m - baselineRef.current![i]));
+
+    // Track dropped frames via the sequence counter (best-effort; ignores wrap).
+    if (lastSeqRef.current !== null && frame.seq > lastSeqRef.current + 1) {
+      droppedFramesRef.current += frame.seq - lastSeqRef.current - 1;
+    }
+    lastSeqRef.current = frame.seq;
+
+    const rawForce = magDeltaToForce(magDelta);
+    const force = forceFilterRef.current.filter(rawForce);
+
+    const rawPos = computeLocation(magDelta);
+    const position = {
+      x: positionXFilterRef.current.filter(rawPos.x),
+      y: positionYFilterRef.current.filter(rawPos.y),
+    };
+
+    const angle = angleFilterRef.current.filter(computeAngle(frame.tiltX, frame.tiltY));
+
+    // Thrust detection on the smoothed force signal.
+    if (detectThrust(force)) {
+      thrustsCountRef.current += 1;
+      sessionStorage.recordThrust(force, position, angle);
+    }
+
+    const rate = calculateThrustRate();
+    sessionStorage.updateStats(force, rate);
+
+    setData({
+      force,
+      compressionRate: rate,
+      handPosition: position,
+      angle,
+      feedback: generateFeedback(force, position),
+      thrusts: thrustsCountRef.current,
+      isConnected: true,
+      rawMagDelta: magDelta,
+      sumMagDelta: sumMagDelta(magDelta),
+      seq: frame.seq,
+      droppedFrames: droppedFramesRef.current,
+    });
+  };
+
+  /**
+   * Detect a thrust: force rising past THRUST_DETECT_N, with a cooldown so one
+   * push isn't counted multiple times.
    */
   const detectThrust = (currentForce: number): boolean => {
-    const threshold = 2.5; // Minimum force in Newtons (lowered for calibration)
-    const cooldown = 400; // Minimum time between thrusts (ms)
-
+    const cooldown = 400; // ms between counted thrusts
     const now = Date.now();
-    const timeSinceLastThrust = now - lastThrustTimeRef.current;
+    const timeSinceLast = now - lastThrustTimeRef.current;
 
-    // Check for force spike above threshold with cooldown
     if (
-      currentForce > threshold &&
-      lastForceRef.current < threshold &&
-      timeSinceLastThrust > cooldown
+      currentForce > THRUST_DETECT_N &&
+      lastForceRef.current <= THRUST_DETECT_N &&
+      timeSinceLast > cooldown
     ) {
       lastThrustTimeRef.current = now;
       lastForceRef.current = currentForce;
-      forceHistoryRef.current.push(now); // Track thrust time
-      console.log(`[Thrust Detected] Force: ${currentForce}N at ${new Date(now).toISOString()}`);
+      thrustTimesRef.current.push(now);
       return true;
     }
 
@@ -233,106 +201,83 @@ export function useBluetoothTrainingData(useMockData: boolean = false) {
     return false;
   };
 
-  /**
-   * Calculate thrust rate (thrusts per minute for Heimlich maneuver)
-   */
-  const calculateCompressionRate = (): number => {
-    const history = forceHistoryRef.current;
-    if (history.length < 2) return 0;
-
-    // Count thrust peaks in the last 60 seconds
+  /** Thrusts detected in the last 60 seconds (thrusts per minute). */
+  const calculateThrustRate = (): number => {
     const oneMinuteAgo = Date.now() - 60000;
-    const recentThrusts = history.filter((timestamp) => timestamp > oneMinuteAgo);
-
-    return recentThrusts.length;
+    thrustTimesRef.current = thrustTimesRef.current.filter((t) => t > oneMinuteAgo);
+    return thrustTimesRef.current.length;
   };
 
   /**
-   * Generate real-time feedback based on sensor data
+   * Real-time coaching message based on force + hand position.
    */
-  const generateFeedback = (
-    force: number,
-    position: { x: number; y: number },
-    angle: number
-  ): string => {
-    // Adjusted thresholds for current calibration
-    const targetForce = { min: 5, max: 15 };
-    const targetPosition = { x: 0.5, y: 0.45 };
-
-    // No force - waiting for thrust
-    if (force < 5) {
-      return 'Ready to practice - Apply thrust to begin';
+  const generateFeedback = (force: number, position: { x: number; y: number }): string => {
+    if (force < IDLE_FORCE_N) {
+      return 'Ready — perform an abdominal thrust';
     }
 
-    // Force too low
-    if (force < targetForce.min) {
-      return `Increase pressure - Current: ${force.toFixed(0)}N (Target: ${targetForce.min}-${targetForce.max}N)`;
+    if (force < TARGET_FORCE.min) {
+      return `Push harder — ${force.toFixed(0)}N (target ${TARGET_FORCE.min}–${TARGET_FORCE.max}N)`;
     }
 
-    // Force too high
-    if (force > targetForce.max) {
-      return `⚠️ Reduce pressure - Current: ${force.toFixed(0)}N (Max: ${targetForce.max}N)`;
+    if (force > TARGET_FORCE.max) {
+      return `⚠️ Too much force — ${force.toFixed(0)}N (max ${TARGET_FORCE.max}N, injury risk)`;
     }
 
-    // Check position (more lenient for real-world use)
-    const positionError = Math.sqrt(
-      Math.pow(position.x - targetPosition.x, 2) + Math.pow(position.y - targetPosition.y, 2)
-    );
+    // Force is good — check hand placement.
+    const dx = position.x - POSITION_TARGET.x;
+    const dy = position.y - POSITION_TARGET.y;
+    const positionError = Math.sqrt(dx * dx + dy * dy);
 
-    if (positionError > 0.15) {
-      const xOffset = (position.x - targetPosition.x);
-      const yOffset = (position.y - targetPosition.y);
-
-      if (Math.abs(xOffset) > Math.abs(yOffset)) {
-        const direction = xOffset > 0 ? 'left' : 'right';
-        const cm = Math.abs(xOffset * 20).toFixed(0); // Scale to approximate cm
-        return `Move hands ${cm}cm ${direction}`;
-      } else {
-        const direction = yOffset > 0 ? 'up' : 'down';
-        const cm = Math.abs(yOffset * 20).toFixed(0);
-        return `Move hands ${cm}cm ${direction}`;
+    if (positionError > POSITION_TOLERANCE) {
+      if (Math.abs(dx) > Math.abs(dy)) {
+        return `Move hands ${dx > 0 ? 'left' : 'right'}`;
       }
+      return `Move hands ${dy > 0 ? 'up' : 'down'}`;
     }
 
-    // Good thrust!
-    return `✓ Good thrust! Force: ${force.toFixed(0)}N - Keep going!`;
+    return `✓ Good thrust — ${force.toFixed(0)}N`;
   };
 
   /**
-   * Simulate mock data for testing without hardware
+   * Simulated stream for development / demo fallback. Produces force that sweeps
+   * through the 40–65N band so every zone (low / optimal / high) is exercised.
    */
   const startMockDataSimulation = () => {
+    sessionStorage.startSession();
+
     const interval = setInterval(() => {
-      setData((prev) => {
-        // Simulate force fluctuations
-        const newForce = 80 + Math.sin(Date.now() / 1000) * 30 + (Math.random() - 0.5) * 10;
+      // Oscillate roughly 25–75 N so the gauge visibly passes through optimal.
+      const force = 50 + Math.sin(Date.now() / 900) * 25 + (Math.random() - 0.5) * 6;
+      const clamped = Math.max(0, force);
 
-        // Detect thrusts
-        let newThrusts = prev.thrusts;
-        if (detectThrust(newForce)) {
-          newThrusts += 1;
-        }
+      const position = {
+        x: POSITION_TARGET.x + Math.sin(Date.now() / 2000) * 0.06,
+        y: POSITION_TARGET.y + Math.cos(Date.now() / 2000) * 0.06,
+      };
+      const angle = Math.sin(Date.now() / 3000) * 20;
 
-        // Simulate position drift
-        const newPosition = {
-          x: 0.5 + Math.sin(Date.now() / 2000) * 0.08,
-          y: 0.45 + Math.cos(Date.now() / 2000) * 0.08,
-        };
+      if (detectThrust(clamped)) {
+        thrustsCountRef.current += 1;
+        sessionStorage.recordThrust(clamped, position, angle);
+      }
+      const rate = calculateThrustRate();
+      sessionStorage.updateStats(clamped, rate);
 
-        // Simulate angle variations
-        const newAngle = Math.sin(Date.now() / 3000) * 20;
-
-        return {
-          compressionDepth: Math.max(0, newForce),
-          compressionRate: 100 + Math.floor(Math.random() * 20),
-          handPosition: newPosition,
-          angle: newAngle,
-          feedback: generateFeedback(newForce, newPosition, newAngle),
-          thrusts: newThrusts,
-          isConnected: false, // Mock mode
-        };
+      setData({
+        force: clamped,
+        compressionRate: rate,
+        handPosition: position,
+        angle,
+        feedback: generateFeedback(clamped, position),
+        thrusts: thrustsCountRef.current,
+        isConnected: false, // mock mode
+        rawMagDelta: [clamped / 4, clamped / 4, clamped / 4, clamped / 4],
+        sumMagDelta: clamped,
+        seq: 0,
+        droppedFrames: 0,
       });
-    }, 200); // Update every 200ms
+    }, 100); // 10 Hz
 
     return () => clearInterval(interval);
   };
