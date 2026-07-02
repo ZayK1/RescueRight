@@ -21,7 +21,7 @@ const getFeedbackType = (feedback: string): 'success' | 'info' | 'error' | 'warn
 const getPositionStatus = (position: { x: number; y: number }): 'correct' | 'too-high' | 'too-low' | 'too-left' | 'too-right' => {
   const targetX = POSITION_TARGET.x;
   const targetY = POSITION_TARGET.y;
-  const threshold = 0.08; // 8% deviation tolerance (more sensitive)
+  const threshold = 0.04; // 4% display threshold so demo movements are visible
 
   const xDiff = position.x - targetX;
   const yDiff = position.y - targetY;

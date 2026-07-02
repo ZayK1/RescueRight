@@ -16,6 +16,14 @@ import {
 
 // Number of at-rest samples averaged to establish the magnetometer baseline.
 const BASELINE_FRAMES = 15;
+const DEMO_POSITION_SEQUENCE = [
+  { x: POSITION_TARGET.x, y: POSITION_TARGET.y },
+  { x: POSITION_TARGET.x - 0.22, y: POSITION_TARGET.y },
+  { x: POSITION_TARGET.x + 0.22, y: POSITION_TARGET.y },
+  { x: POSITION_TARGET.x, y: POSITION_TARGET.y - 0.22 },
+  { x: POSITION_TARGET.x, y: POSITION_TARGET.y + 0.22 },
+  { x: POSITION_TARGET.x, y: POSITION_TARGET.y },
+];
 
 export interface TrainingData {
   force: number; // Newtons — headline metric, derived from the pad
@@ -285,9 +293,10 @@ export function useBluetoothTrainingData(useMockData: boolean = false) {
       } else {
         peakN = TARGET_FORCE.min + 4 + Math.random() * (TARGET_FORCE.max - TARGET_FORCE.min - 8);
       }
+      const plannedPosition = DEMO_POSITION_SEQUENCE[index % DEMO_POSITION_SEQUENCE.length];
       thrustPos = {
-        x: POSITION_TARGET.x + (Math.random() - 0.5) * 0.16,
-        y: POSITION_TARGET.y + (Math.random() - 0.5) * 0.16,
+        x: plannedPosition.x + (Math.random() - 0.5) * 0.02,
+        y: plannedPosition.y + (Math.random() - 0.5) * 0.02,
       };
       gapMs = 1100 + Math.random() * 700; // distinct, separate thrusts
     };
