@@ -11,9 +11,10 @@ import { sessionStorage } from '../lib/sessionStorage';
 import { TARGET_FORCE, POSITION_TARGET } from '../lib/vestCalibration';
 import { theme } from '../styles/theme';
 
-const getFeedbackType = (feedback: string): 'success' | 'info' | 'error' => {
-  if (feedback.includes('Good thrust') || feedback.includes('Perfect')) return 'success';
-  if (feedback.includes('Reduce pressure') || feedback.includes('Risk of injury')) return 'error';
+const getFeedbackType = (feedback: string): 'success' | 'info' | 'error' | 'warning' => {
+  if (feedback.includes('✓') || feedback.includes('expelled') || feedback.includes('🎉')) return 'success';
+  if (feedback.includes('⚠') || feedback.includes('Too much force')) return 'error';
+  if (feedback.includes('Push harder') || feedback.includes('Move hands')) return 'warning';
   return 'info';
 };
 
@@ -106,6 +107,7 @@ export default function TrainingScreen() {
     <View style={styles.container}>
       <StatusHeader
         isConnected={data.isConnected}
+        demoMode={useMock}
         batteryLevel={87}
         duration={duration}
         showBypass={true}
@@ -158,7 +160,7 @@ const styles = StyleSheet.create({
   module: { gap: theme.spacing.sm },
   moduleTitle: { ...theme.typography.h3, color: theme.colors.text.primary, paddingHorizontal: 4, marginBottom: theme.spacing.sm },
   completeButton: {
-    backgroundColor: theme.colors.success,
+    backgroundColor: theme.colors.primary,
     height: 60,
     borderRadius: theme.borderRadius.lg,
     justifyContent: 'center',

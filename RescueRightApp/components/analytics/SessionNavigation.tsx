@@ -50,9 +50,9 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 50,
-    backgroundColor: 'rgba(249, 250, 251, 0.85)', // F9FAFB with opacity
+    backgroundColor: 'rgba(245, 247, 250, 0.9)', // theme background with opacity
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: theme.colors.border,
   },
   statusBarSpacer: {
     height: 59, // Safe area

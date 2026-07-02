@@ -36,11 +36,12 @@ export interface TrainingData {
  * Real-time training data from the RescueRight vest.
  *
  * Pipeline (all interpretation lives in the app, see lib/vestCalibration.ts):
- *   BLE SensorFrame (magDelta[4], tilt)  ->  smoothing  ->  force / position /
- *   angle  ->  thrust detection  ->  feedback + session recording.
+ *   BLE SensorFrame (mag[4], tilt)  ->  app-side baseline  ->  smoothing  ->
+ *   force / position / angle  ->  per-thrust peak detection  ->  feedback +
+ *   session recording.
  *
- * Pass useMockData=true to run the whole flow off a simulated stream (dev tool
- * and demo safety net if BLE misbehaves).
+ * Pass useMockData=true to run the whole flow off a simulated Heimlich
+ * sequence (dev tool and demo safety net if BLE misbehaves).
  */
 export function useBluetoothTrainingData(useMockData: boolean = false) {
   const [data, setData] = useState<TrainingData>({
@@ -55,11 +56,15 @@ export function useBluetoothTrainingData(useMockData: boolean = false) {
 
   const [error, setError] = useState<string | null>(null);
 
-  // Thrust detection + rate
+  // Per-thrust peak tracking. A real Heimlich thrust is a short pulse: force
+  // rises past THRUST_DETECT_N, peaks, then releases. We record the thrust at
+  // RELEASE, with its true PEAK force — not the value at threshold crossing.
+  const inThrustRef = useRef(false);
+  const peakForceRef = useRef(0);
+  const peakPositionRef = useRef({ x: POSITION_TARGET.x, y: POSITION_TARGET.y });
+  const peakAngleRef = useRef(0);
   const thrustsCountRef = useRef(0);
-  const lastForceRef = useRef(0);
   const thrustTimesRef = useRef<number[]>([]);
-  const lastThrustTimeRef = useRef(0);
 
   // Frame reliability
   const lastSeqRef = useRef<number | null>(null);
@@ -142,8 +147,7 @@ export function useBluetoothTrainingData(useMockData: boolean = false) {
     }
     lastSeqRef.current = frame.seq;
 
-    const rawForce = magDeltaToForce(magDelta);
-    const force = forceFilterRef.current.filter(rawForce);
+    const force = forceFilterRef.current.filter(magDeltaToForce(magDelta));
 
     const rawPos = computeLocation(magDelta);
     const position = {
@@ -153,18 +157,11 @@ export function useBluetoothTrainingData(useMockData: boolean = false) {
 
     const angle = angleFilterRef.current.filter(computeAngle(frame.tiltX, frame.tiltY));
 
-    // Thrust detection on the smoothed force signal.
-    if (detectThrust(force)) {
-      thrustsCountRef.current += 1;
-      sessionStorage.recordThrust(force, position, angle);
-    }
-
-    const rate = calculateThrustRate();
-    sessionStorage.updateStats(force, rate);
+    registerSample(force, position, angle);
 
     setData({
       force,
-      compressionRate: rate,
+      compressionRate: calculateThrustRate(),
       handPosition: position,
       angle,
       feedback: generateFeedback(force, position),
@@ -178,27 +175,40 @@ export function useBluetoothTrainingData(useMockData: boolean = false) {
   };
 
   /**
-   * Detect a thrust: force rising past THRUST_DETECT_N, with a cooldown so one
-   * push isn't counted multiple times.
+   * Per-thrust peak detection. Tracks a thrust from the moment force rises
+   * past THRUST_DETECT_N until it releases below IDLE_FORCE_N, then records
+   * the thrust with its peak force / position / angle.
    */
-  const detectThrust = (currentForce: number): boolean => {
-    const cooldown = 400; // ms between counted thrusts
-    const now = Date.now();
-    const timeSinceLast = now - lastThrustTimeRef.current;
-
-    if (
-      currentForce > THRUST_DETECT_N &&
-      lastForceRef.current <= THRUST_DETECT_N &&
-      timeSinceLast > cooldown
-    ) {
-      lastThrustTimeRef.current = now;
-      lastForceRef.current = currentForce;
-      thrustTimesRef.current.push(now);
-      return true;
+  const registerSample = (force: number, position: { x: number; y: number }, angle: number) => {
+    if (!inThrustRef.current) {
+      if (force > THRUST_DETECT_N) {
+        inThrustRef.current = true;
+        peakForceRef.current = force;
+        peakPositionRef.current = position;
+        peakAngleRef.current = angle;
+      }
+      return;
     }
 
-    lastForceRef.current = currentForce;
-    return false;
+    // Inside a thrust — keep tracking the peak.
+    if (force > peakForceRef.current) {
+      peakForceRef.current = force;
+      peakPositionRef.current = position;
+      peakAngleRef.current = angle;
+    }
+
+    // Release detected -> the thrust is complete, record it.
+    if (force < IDLE_FORCE_N) {
+      inThrustRef.current = false;
+      thrustsCountRef.current += 1;
+      thrustTimesRef.current.push(Date.now());
+      sessionStorage.recordThrust(
+        peakForceRef.current,
+        peakPositionRef.current,
+        peakAngleRef.current
+      );
+      sessionStorage.updateStats(peakForceRef.current, calculateThrustRate());
+    }
   };
 
   /** Thrusts detected in the last 60 seconds (thrusts per minute). */
@@ -240,44 +250,101 @@ export function useBluetoothTrainingData(useMockData: boolean = false) {
   };
 
   /**
-   * Simulated stream for development / demo fallback. Produces force that sweeps
-   * through the 40–65N band so every zone (low / optimal / high) is exercised.
+   * Simulated Heimlich rescue for the self-test / demo.
+   *
+   * A real Heimlich is NOT a continuous push: it's a series of discrete
+   * thrusts — a sharp inward-and-upward pulse (~0.4s), full release, a short
+   * gap, then the next thrust — repeated until the foreign body is expelled.
+   * This simulates exactly that: 6–8 successive thrusts (mostly in the
+   * 40–65N band, a couple deliberately low/high so every feedback state is
+   * shown), then the object is expelled and the session invites you to view
+   * the results.
    */
   const startMockDataSimulation = () => {
     sessionStorage.startSession();
 
-    const interval = setInterval(() => {
-      // Oscillate roughly 25–75 N so the gauge visibly passes through optimal.
-      const force = 50 + Math.sin(Date.now() / 900) * 25 + (Math.random() - 0.5) * 6;
-      const clamped = Math.max(0, force);
+    const TICK_MS = 50; // 20 Hz, same as the real pad
+    const THRUST_MS = 400; // one pulse: ramp ~30%, brief peak, release
+    const totalThrusts = 6 + Math.floor(Math.random() * 3); // until "expelled"
 
-      const position = {
-        x: POSITION_TARGET.x + Math.sin(Date.now() / 2000) * 0.06,
-        y: POSITION_TARGET.y + Math.cos(Date.now() / 2000) * 0.06,
-      };
-      const angle = Math.sin(Date.now() / 3000) * 20;
+    let phase: 'gap' | 'thrust' = 'gap';
+    let phaseStart = Date.now();
+    let gapMs = 1000; // settle-in before the first thrust
+    let peakN = 0;
+    let thrustPos = { ...POSITION_TARGET };
+    let completed = 0;
+    let expelled = false;
 
-      if (detectThrust(clamped)) {
-        thrustsCountRef.current += 1;
-        sessionStorage.recordThrust(clamped, position, angle);
+    // Plan the next thrust: mostly in-band, sometimes low or high so the demo
+    // exercises every coaching state.
+    const planThrust = (index: number) => {
+      if (index === 1) {
+        peakN = 30 + Math.random() * 6; // early attempt: too weak
+      } else if (index === totalThrusts - 1) {
+        peakN = TARGET_FORCE.max + 8 + Math.random() * 8; // one overshoot
+      } else {
+        peakN = TARGET_FORCE.min + 4 + Math.random() * (TARGET_FORCE.max - TARGET_FORCE.min - 8);
       }
-      const rate = calculateThrustRate();
-      sessionStorage.updateStats(clamped, rate);
+      thrustPos = {
+        x: POSITION_TARGET.x + (Math.random() - 0.5) * 0.16,
+        y: POSITION_TARGET.y + (Math.random() - 0.5) * 0.16,
+      };
+      gapMs = 1100 + Math.random() * 700; // distinct, separate thrusts
+    };
+    planThrust(0);
+
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const elapsed = now - phaseStart;
+      let force = 0;
+
+      if (!expelled) {
+        if (phase === 'gap') {
+          if (elapsed >= gapMs) {
+            phase = 'thrust';
+            phaseStart = now;
+          }
+        } else {
+          if (elapsed >= THRUST_MS) {
+            completed += 1;
+            if (completed >= totalThrusts) {
+              expelled = true;
+            } else {
+              planThrust(completed);
+            }
+            phase = 'gap';
+            phaseStart = now;
+          } else {
+            // Pulse envelope: sharp rise, brief peak, release to zero.
+            const t = elapsed / THRUST_MS;
+            const envelope = t < 0.3 ? t / 0.3 : t < 0.5 ? 1 : (1 - t) / 0.5;
+            force = Math.max(0, peakN * envelope + (Math.random() - 0.5) * 2);
+          }
+        }
+      }
+
+      const position =
+        force > IDLE_FORCE_N ? thrustPos : { ...POSITION_TARGET };
+      const angle = force > IDLE_FORCE_N ? -42 + (Math.random() - 0.5) * 10 : 0;
+
+      registerSample(force, position, angle);
 
       setData({
-        force: clamped,
-        compressionRate: rate,
+        force,
+        compressionRate: calculateThrustRate(),
         handPosition: position,
         angle,
-        feedback: generateFeedback(clamped, position),
+        feedback: expelled
+          ? '🎉 Foreign body expelled! Tap Complete Session for your results'
+          : generateFeedback(force, position),
         thrusts: thrustsCountRef.current,
-        isConnected: false, // mock mode
-        rawMagDelta: [clamped / 4, clamped / 4, clamped / 4, clamped / 4],
-        sumMagDelta: clamped,
+        isConnected: false, // mock mode — the Demo badge reflects this
+        rawMagDelta: [force / 4, force / 4, force / 4, force / 4],
+        sumMagDelta: force,
         seq: 0,
         droppedFrames: 0,
       });
-    }, 100); // 10 Hz
+    }, TICK_MS);
 
     return () => clearInterval(interval);
   };

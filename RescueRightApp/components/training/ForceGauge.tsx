@@ -98,9 +98,9 @@ export function ForceGauge({ force, targetMin, targetMax }: ForceGaugeProps) {
     //   below  -> Too Low (ineffective), amber
     //   within -> Optimal, green
     //   above  -> Too High (injury risk), red
-    if (displayedForce < targetMin) return { text: 'Too Low', color: '#F59E0B', bgColor: 'rgba(245, 158, 11, 0.1)' };
-    if (displayedForce <= targetMax) return { text: 'Optimal', color: '#10B981', bgColor: 'rgba(16, 185, 129, 0.1)' };
-    return { text: 'Too High', color: '#EF4444', bgColor: 'rgba(239, 68, 68, 0.1)' };
+    if (displayedForce < targetMin) return { text: 'Too Low', color: theme.colors.warning, bgColor: `${theme.colors.warning}1A` };
+    if (displayedForce <= targetMax) return { text: 'Optimal', color: theme.colors.success, bgColor: `${theme.colors.success}1A` };
+    return { text: 'Too High', color: theme.colors.error, bgColor: `${theme.colors.error}1A` };
   };
 
   const status = getStatus();
@@ -113,11 +113,11 @@ export function ForceGauge({ force, targetMin, targetMax }: ForceGaugeProps) {
           <View style={styles.iconContainer}>
             <Zap size={16} color="#FFFFFF" strokeWidth={2.5} />
           </View>
-          <Text style={styles.title}>Compression Force</Text>
+          <Text style={styles.title}>Thrust Force</Text>
         </View>
         <View style={styles.targetBadge}>
-          <Target size={11} color="#10B981" strokeWidth={2} />
-          <Text style={styles.targetText}>{targetMin}-{targetMax}N optimal</Text>
+          <Target size={11} color={theme.colors.success} strokeWidth={2} />
+          <Text style={styles.targetText}>{targetMin}–{targetMax}N optimal</Text>
         </View>
       </View>
 
@@ -215,10 +215,10 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 10,
-    backgroundColor: '#667EEA',
+    backgroundColor: theme.colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#667EEA',
+    shadowColor: theme.colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -234,7 +234,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: 'rgba(16, 185, 129, 0.08)',
+    backgroundColor: `${theme.colors.success}14`,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 12,
@@ -242,7 +242,7 @@ const styles = StyleSheet.create({
   targetText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#10B981',
+    color: theme.colors.success,
   },
   gaugeContainer: {
     alignItems: 'center',

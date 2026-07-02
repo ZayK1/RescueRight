@@ -9,9 +9,11 @@ interface StatusHeaderProps {
   duration: number;
   showBypass?: boolean;
   onBypass?: () => void;
+  /** Self-test / simulated-data mode — shows an amber "Demo" badge instead of the connection state. */
+  demoMode?: boolean;
 }
 
-export function StatusHeader({ isConnected, batteryLevel, duration, showBypass, onBypass }: StatusHeaderProps) {
+export function StatusHeader({ isConnected, batteryLevel, duration, showBypass, onBypass, demoMode }: StatusHeaderProps) {
   const shouldShowBypass = showBypass && __DEV__;
 
   const formatDuration = (seconds: number) => {
@@ -25,13 +27,24 @@ export function StatusHeader({ isConnected, batteryLevel, duration, showBypass, 
       <View style={styles.statusBarSpacer} />
       <View style={styles.headerPillWrapper}>
         <View style={styles.headerPill}>
-          {/* Connection Status */}
-          <View style={[styles.connectionStatus, isConnected ? styles.connected : styles.disconnected]}>
-            <Bluetooth size={13} color={isConnected ? '#10B981' : '#EF4444'} strokeWidth={2.5} />
-            <Text style={[styles.connectionText, isConnected ? styles.connectedText : styles.disconnectedText]}>
-              {isConnected ? 'Connected' : 'Disconnected'}
-            </Text>
-          </View>
+          {/* Connection Status (or Demo badge when running simulated data) */}
+          {demoMode ? (
+            <View style={[styles.connectionStatus, styles.demo]}>
+              <Bluetooth size={13} color={theme.colors.warning} strokeWidth={2.5} />
+              <Text style={[styles.connectionText, styles.demoText]}>Demo Mode</Text>
+            </View>
+          ) : (
+            <View style={[styles.connectionStatus, isConnected ? styles.connected : styles.disconnected]}>
+              <Bluetooth
+                size={13}
+                color={isConnected ? theme.colors.success : theme.colors.error}
+                strokeWidth={2.5}
+              />
+              <Text style={[styles.connectionText, isConnected ? styles.connectedText : styles.disconnectedText]}>
+                {isConnected ? 'Connected' : 'Disconnected'}
+              </Text>
+            </View>
+          )}
 
           {/* Center Title (Timer) */}
           <Text style={styles.title}>
@@ -101,10 +114,13 @@ const styles = StyleSheet.create({
     borderRadius: 14,
   },
   connected: {
-    backgroundColor: 'rgba(16, 185, 129, 0.2)',
+    backgroundColor: `${theme.colors.success}30`,
   },
   disconnected: {
-    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+    backgroundColor: `${theme.colors.error}30`,
+  },
+  demo: {
+    backgroundColor: `${theme.colors.warning}30`,
   },
   connectionText: {
     fontSize: 12,
@@ -112,10 +128,13 @@ const styles = StyleSheet.create({
     letterSpacing: 0,
   },
   connectedText: {
-    color: '#10B981',
+    color: theme.colors.success,
   },
   disconnectedText: {
-    color: '#EF4444',
+    color: theme.colors.error,
+  },
+  demoText: {
+    color: theme.colors.warning,
   },
   title: {
     fontSize: 17,

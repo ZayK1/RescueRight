@@ -1,21 +1,14 @@
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Check, Award, Clock, TrendingUp } from 'lucide-react-native';
-import Svg, { Circle, Defs, LinearGradient, Stop, G, Polyline } from 'react-native-svg';
 import Animated, {
   useAnimatedProps,
-  useDerivedValue,
-  withTiming,
   useSharedValue,
   withSpring,
-  withSequence,
-  Easing
 } from 'react-native-reanimated';
 import { theme } from '../../styles/theme';
 import { ThrustData } from '../../lib/sessionStorage';
-
-const AnimatedCircle = Animated.createAnimatedComponent(Circle);
-const CIRCLE_LENGTH = 2 * Math.PI * 58; // 2 * PI * R
+import { ForceChart } from './ForceChart';
 
 interface HeroSuccessCardProps {
   score: number;
@@ -23,51 +16,12 @@ interface HeroSuccessCardProps {
   thrustHistory: ThrustData[];
 }
 
-// Function to generate SVG path from thrust history
-const generateGraphPath = (history: ThrustData[], width: number, height: number) => {
-  if (history.length < 2) return '0,0';
-
-  const maxForce = Math.max(...history.map(t => t.force), 0) || 100;
-  const minTime = history[0].timestamp;
-  const maxTime = history[history.length - 1].timestamp;
-  const timeRange = maxTime - minTime;
-
-  if (timeRange === 0) return `0,${height}`;
-
-  return history
-    .map(thrust => {
-      const x = ((thrust.timestamp - minTime) / timeRange) * width;
-      const y = height - (thrust.force / maxForce) * height;
-      return `${x.toFixed(2)},${y.toFixed(2)}`;
-    })
-    .join(' ');
-};
-
 export function HeroSuccessCard({ score, duration, thrustHistory }: HeroSuccessCardProps) {
-  const progress = useDerivedValue(() => {
-    return withTiming(score / 100, { duration: 1400, easing: Easing.bezier(0.25, 0.1, 0.25, 1) });
-  });
-
-  const scale = useSharedValue(0);
   const badgeScale = useSharedValue(0);
 
   useEffect(() => {
     badgeScale.value = withSpring(1, { damping: 12, stiffness: 100 });
-    scale.value = withSequence(
-      withTiming(0, { duration: 100 }),
-      withSpring(1, { damping: 15, stiffness: 120 })
-    );
   }, []);
-
-  const animatedProps = useAnimatedProps(() => ({
-    strokeDashoffset: CIRCLE_LENGTH * (1 - progress.value),
-  }));
-
-  const scoreAnimatedStyle = useAnimatedProps(() => ({
-    transform: [{ scale: scale.value }],
-    opacity: scale.value,
-    text: `${score}`
-  }));
 
   const badgeAnimatedStyle = useAnimatedProps(() => ({
     transform: [{ scale: badgeScale.value }],
@@ -87,7 +41,6 @@ export function HeroSuccessCard({ score, duration, thrustHistory }: HeroSuccessC
   };
 
   const performance = getPerformanceLevel();
-  const graphPoints = generateGraphPath(thrustHistory, 280, 100);
 
   return (
     <View style={styles.card}>
@@ -108,35 +61,15 @@ export function HeroSuccessCard({ score, duration, thrustHistory }: HeroSuccessC
         <Text style={styles.subtitle}>Session performance analysis</Text>
       </View>
 
-      {/* Thrust History Graph */}
+      {/* Per-thrust peak force vs the 40–65N clinical band */}
       <View style={styles.graphContainer}>
         <View style={styles.graphHeader}>
-          <Text style={styles.graphTitle}>Thrust Force Over Time</Text>
+          <Text style={styles.graphTitle}>Peak Force per Thrust</Text>
           <View style={styles.scorePill}>
             <Text style={styles.scorePillText}>{score}% SCORE</Text>
           </View>
         </View>
-        
-        {thrustHistory.length > 1 ? (
-          <Svg width="100%" height={120}>
-            <Defs>
-              <LinearGradient id="graphGradient" x1="0" y1="0" x2="0" y2="1">
-                <Stop offset="0%" stopColor={performance.color} stopOpacity={0.4} />
-                <Stop offset="100%" stopColor={performance.color} stopOpacity={0} />
-              </LinearGradient>
-            </Defs>
-            <Polyline
-              points={graphPoints}
-              fill="url(#graphGradient)"
-              stroke={performance.color}
-              strokeWidth={2.5}
-            />
-          </Svg>
-        ) : (
-          <View style={styles.noDataContainer}>
-            <Text style={styles.noDataText}>Not enough data to display graph.</Text>
-          </View>
-        )}
+        <ForceChart thrustHistory={thrustHistory} />
       </View>
 
       {/* Stats Row */}

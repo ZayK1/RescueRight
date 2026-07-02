@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { Hand, Zap, Target, Activity, TrendingUp, Shield } from 'lucide-react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { theme } from '../../styles/theme';
+import { TARGET_FORCE } from '../../lib/vestCalibration';
 
 interface MetricCardProps {
   icon: React.ReactNode;
@@ -67,13 +68,14 @@ interface MetricsGridProps {
 }
 
 export function MetricsGrid({ data }: MetricsGridProps) {
-  // Calculate derived metrics
-  const effectiveness = data.totalThrusts > 0
+  // % of thrusts whose peak force landed in the 40–65N training band
+  const inTargetPct = data.totalThrusts > 0
     ? Math.round((data.effectiveThrusts / data.totalThrusts) * 100)
     : 0;
 
-  // Target force range is 20-60N (adjusted for Heimlich)
-  const forceInRange = data.averageForce >= 20 && data.averageForce <= 60;
+  // Average peak force vs the clinically derived band (see vestCalibration)
+  const forceInRange =
+    data.averageForce >= TARGET_FORCE.min && data.averageForce <= TARGET_FORCE.max;
 
   const metrics = [
     {
@@ -86,19 +88,21 @@ export function MetricsGrid({ data }: MetricsGridProps) {
     },
     {
       icon: <Zap size={22} color={theme.colors.success} strokeWidth={2.5} />,
-      label: 'Thrust Force',
+      label: 'Avg Peak Force',
       value: data.averageForce.toFixed(1),
       unit: 'N',
-      status: (forceInRange ? 'excellent' : data.averageForce > 60 ? 'warning' : 'good') as 'excellent' | 'good' | 'warning' | 'neutral',
-      subtitle: forceInRange ? 'Optimal range' : data.averageForce > 60 ? 'Too forceful' : 'Increase force',
+      status: (forceInRange ? 'excellent' : data.averageForce > TARGET_FORCE.max ? 'warning' : 'good') as 'excellent' | 'good' | 'warning' | 'neutral',
+      subtitle: forceInRange
+        ? `In ${TARGET_FORCE.min}–${TARGET_FORCE.max}N band`
+        : data.averageForce > TARGET_FORCE.max ? 'Too forceful' : 'Increase force',
     },
     {
       icon: <Target size={22} color={theme.colors.warning} strokeWidth={2.5} />,
-      label: 'Effectiveness',
-      value: effectiveness,
+      label: 'In Target Zone',
+      value: inTargetPct,
       unit: '%',
-      status: (effectiveness >= 85 ? 'excellent' : effectiveness >= 70 ? 'good' : 'warning') as 'excellent' | 'good' | 'warning' | 'neutral',
-      subtitle: `${data.effectiveThrusts}/${data.totalThrusts} effective`,
+      status: (inTargetPct >= 75 ? 'excellent' : inTargetPct >= 50 ? 'good' : 'warning') as 'excellent' | 'good' | 'warning' | 'neutral',
+      subtitle: `${data.effectiveThrusts}/${data.totalThrusts} thrusts at ${TARGET_FORCE.min}–${TARGET_FORCE.max}N`,
     },
     {
       icon: <Activity size={22} color={theme.colors.secondary} strokeWidth={2.5} />,
@@ -114,7 +118,7 @@ export function MetricsGrid({ data }: MetricsGridProps) {
       value: data.forceConsistency,
       unit: '%',
       status: (data.forceConsistency >= 80 ? 'excellent' : data.forceConsistency >= 60 ? 'good' : 'warning') as 'excellent' | 'good' | 'warning' | 'neutral',
-      subtitle: 'Force variance',
+      subtitle: 'Thrust-to-thrust variation',
     },
     {
       icon: <Shield size={22} color={theme.colors.success} strokeWidth={2.5} />,

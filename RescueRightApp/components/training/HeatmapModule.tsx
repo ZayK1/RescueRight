@@ -4,6 +4,7 @@ import Animated, { useAnimatedStyle, withSpring, useSharedValue, withRepeat, wit
 import { Activity, ArrowDown, ArrowUp, ArrowLeft, ArrowRight } from 'lucide-react-native';
 import Svg, { Path, Defs, RadialGradient, Stop } from 'react-native-svg';
 import { theme } from '../../styles/theme';
+import { TARGET_FORCE, getForceZone } from '../../lib/vestCalibration';
 
 interface HeatmapModuleProps {
   position: 'correct' | 'too-high' | 'too-low' | 'too-left' | 'too-right';
@@ -128,10 +129,20 @@ export function HeatmapModule({ position, force }: HeatmapModuleProps) {
   const handStrokeColor = isCorrect ? '#059669' : '#D97706';
 
   const getAccuracy = () => {
-    if (displayedPosition === 'correct' && displayedForce >= 80 && displayedForce <= 120) return 98;
+    const inBand = displayedForce >= TARGET_FORCE.min && displayedForce <= TARGET_FORCE.max;
+    if (displayedPosition === 'correct' && inBand) return 98;
     if (displayedPosition === 'correct') return 85;
     return 65;
   };
+
+  // Live force-zone label for the metrics row (replaces the old hardcoded tile)
+  const zone = getForceZone(displayedForce);
+  const zoneDisplay = {
+    idle: { text: '—', color: theme.colors.text.tertiary },
+    low: { text: 'Low', color: theme.colors.warning },
+    optimal: { text: 'Optimal', color: theme.colors.success },
+    high: { text: 'High', color: theme.colors.error },
+  }[zone];
 
   const getDirectionArrow = () => {
     const arrowColor = theme.colors.warning;
@@ -315,8 +326,8 @@ export function HeatmapModule({ position, force }: HeatmapModuleProps) {
           <Text style={styles.metricLabel}>Force</Text>
         </View>
         <View style={[styles.metric, styles.metricOrange]}>
-          <Text style={styles.metricValue}>2.1s</Text>
-          <Text style={styles.metricLabel}>Rhythm</Text>
+          <Text style={[styles.metricValue, { color: zoneDisplay.color }]}>{zoneDisplay.text}</Text>
+          <Text style={styles.metricLabel}>Force Zone</Text>
         </View>
       </View>
     </View>
@@ -351,10 +362,10 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 10,
-    backgroundColor: '#6366F1',
+    backgroundColor: theme.colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#6366F1',
+    shadowColor: theme.colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -409,7 +420,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     borderWidth: 1.5,
     borderRadius: 1000,
-    borderColor: 'rgba(99, 102, 241, 0.15)',
+    borderColor: 'rgba(0, 102, 204, 0.12)',
   },
   targetRingOuter: {
     width: 240,
@@ -418,12 +429,12 @@ const styles = StyleSheet.create({
   targetRingMiddle: {
     width: 180,
     height: 180,
-    borderColor: 'rgba(99, 102, 241, 0.25)',
+    borderColor: 'rgba(0, 102, 204, 0.22)',
   },
   targetRingInner: {
     width: 120,
     height: 120,
-    borderColor: 'rgba(99, 102, 241, 0.35)',
+    borderColor: 'rgba(0, 102, 204, 0.32)',
   },
   optimalZone: {
     position: 'absolute',
@@ -537,7 +548,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   metricPurple: {
-    backgroundColor: 'rgba(99, 102, 241, 0.08)',
+    backgroundColor: 'rgba(0, 102, 204, 0.08)',
   },
   metricGreen: {
     backgroundColor: 'rgba(16, 185, 129, 0.08)',

@@ -18,12 +18,13 @@ export default function AnalyticsScreen() {
     // Get the most recent session data
     const session = sessionStorage.getCurrentSession();
     if (session && session.totalThrusts !== undefined) {
-      // Convert to SessionData
+      // Convert to SessionData (prefer the stored duration if the session was
+      // properly ended; only recompute for a still-active session)
       setSessionData({
         id: session.id!,
         startTime: session.startTime!,
-        endTime: Date.now(),
-        duration: Math.floor((Date.now() - session.startTime!) / 1000),
+        endTime: session.endTime ?? Date.now(),
+        duration: session.duration ?? Math.floor((Date.now() - session.startTime!) / 1000),
         totalThrusts: session.totalThrusts!,
         averageForce: session.averageForce!,
         maxForce: session.maxForce!,
@@ -38,38 +39,44 @@ export default function AnalyticsScreen() {
   const handleViewHistory = () => { console.log('View history'); };
   const handleDone = () => { router.push('/'); };
 
-  // Calculate score based on real data
-  const calculateScore = (): number => {
+  // Thrusts whose PEAK force landed in the 40–65N training band — the primary
+  // per-thrust quality measure (a Heimlich is judged thrust by thrust, not on
+  // average force).
+  const countInBandThrusts = (): number => {
     if (!sessionData) return 0;
+    return sessionData.thrustHistory.filter(
+      (t) => t.force >= TARGET_FORCE.min && t.force <= TARGET_FORCE.max
+    ).length;
+  };
+
+  // Median gap between consecutive thrusts (ms). Guidelines call for each
+  // thrust to be a separate, distinct effort — not a rapid-fire push.
+  const medianThrustGapMs = (): number | null => {
+    if (!sessionData || sessionData.thrustHistory.length < 2) return null;
+    const times = sessionData.thrustHistory.map((t) => t.timestamp);
+    const gaps = times.slice(1).map((t, i) => t - times[i]).sort((a, b) => a - b);
+    return gaps[Math.floor(gaps.length / 2)];
+  };
+
+  /**
+   * Session score, weighted by what defines a correct thrust per the study
+   * protocol (position, force, consistency) plus completing a full sequence:
+   *   - 40 pts: % of thrusts with peak force inside the 40–65N band
+   *   - 30 pts: hand-position accuracy
+   *   - 20 pts: thrust-to-thrust force consistency
+   *   - 10 pts: completed a full rescue sequence (≥5 thrusts, per guidelines'
+   *             cycles of 5 abdominal thrusts)
+   */
+  const calculateScore = (): number => {
+    if (!sessionData || sessionData.totalThrusts === 0) return 0;
+
+    const inBandPct = (countInBandThrusts() / sessionData.totalThrusts) * 100;
 
     let score = 0;
-
-    // Force quality (40 points)
-    const targetForce = TARGET_FORCE;
-    if (sessionData.averageForce >= targetForce.min && sessionData.averageForce <= targetForce.max) {
-      score += 40;
-    } else if (sessionData.averageForce > 0) {
-      const deviation = sessionData.averageForce < targetForce.min
-        ? (targetForce.min - sessionData.averageForce) / targetForce.min
-        : (sessionData.averageForce - targetForce.max) / targetForce.max;
-      score += Math.max(0, 40 - deviation * 40);
-    }
-
-    // Position accuracy (30 points)
+    score += (inBandPct / 100) * 40;
     score += (sessionData.positionAccuracy / 100) * 30;
-
-    // Rate consistency (20 points) - ideal rate is around 5 thrusts/min
-    const targetRate = 5;
-    const rateDeviation = Math.abs(sessionData.averageRate - targetRate);
-    const rateScore = Math.max(0, 20 - rateDeviation * 2);
-    score += rateScore;
-
-    // Completion (10 points) - at least 3 thrusts
-    if (sessionData.totalThrusts >= 3) {
-      score += 10;
-    } else {
-      score += (sessionData.totalThrusts / 3) * 10;
-    }
+    score += (calculateForceConsistency() / 100) * 20;
+    score += Math.min(1, sessionData.totalThrusts / 5) * 10;
 
     return Math.round(Math.min(100, score));
   };
@@ -112,27 +119,33 @@ export default function AnalyticsScreen() {
     if (!sessionData) return [];
 
     const feedback: Array<{ type: 'success' | 'warning' | 'error'; message: string; detail: string }> = [];
+    const inBand = countInBandThrusts();
+    const total = sessionData.totalThrusts;
+    const inBandPct = total > 0 ? Math.round((inBand / total) * 100) : 0;
 
-    // Force feedback
-    const targetForce = TARGET_FORCE;
-    if (sessionData.averageForce >= targetForce.min && sessionData.averageForce <= targetForce.max) {
+    // Force feedback — judged per thrust against the 40–65N training band
+    if (inBandPct >= 75) {
       feedback.push({
         type: 'success',
         message: 'Excellent force control',
-        detail: `Average force of ${sessionData.averageForce.toFixed(1)}N is within optimal range (${targetForce.min}-${targetForce.max}N).`
+        detail: `${inBand} of ${total} thrusts landed in the ${TARGET_FORCE.min}–${TARGET_FORCE.max}N target band. Strong enough to clear the airway, controlled enough to be safe.`
       });
-    } else if (sessionData.averageForce < targetForce.min && sessionData.averageForce > 0) {
-      feedback.push({
-        type: 'warning',
-        message: 'Increase thrust force',
-        detail: `Average force was ${sessionData.averageForce.toFixed(1)}N. Target range is ${targetForce.min}-${targetForce.max}N for effective thrusts.`
-      });
-    } else if (sessionData.averageForce > targetForce.max) {
-      feedback.push({
-        type: 'warning',
-        message: 'Reduce excessive force',
-        detail: `Average force was ${sessionData.averageForce.toFixed(1)}N. Stay within ${targetForce.min}-${targetForce.max}N to avoid injury risk.`
-      });
+    } else {
+      const weak = sessionData.thrustHistory.filter((t) => t.force < TARGET_FORCE.min).length;
+      const strong = sessionData.thrustHistory.filter((t) => t.force > TARGET_FORCE.max).length;
+      if (strong > weak) {
+        feedback.push({
+          type: strong > total / 2 ? 'error' : 'warning',
+          message: 'Reduce excessive force',
+          detail: `${strong} of ${total} thrusts exceeded ${TARGET_FORCE.max}N. Excessive force risks internal injury — especially in elderly patients. Aim for the ${TARGET_FORCE.min}–${TARGET_FORCE.max}N band.`
+        });
+      } else {
+        feedback.push({
+          type: 'warning',
+          message: 'Increase thrust force',
+          detail: `${weak} of ${total} thrusts were below ${TARGET_FORCE.min}N — likely too weak to dislodge an obstruction. Drive inward and upward with more commitment.`
+        });
+      }
     }
 
     // Position feedback
@@ -140,42 +153,45 @@ export default function AnalyticsScreen() {
       feedback.push({
         type: 'success',
         message: 'Excellent hand positioning',
-        detail: `${sessionData.positionAccuracy}% of thrusts were in the optimal zone. Great consistency!`
+        detail: `${sessionData.positionAccuracy}% placement accuracy — consistently above the navel and below the ribcage.`
       });
     } else if (sessionData.positionAccuracy >= 60) {
       feedback.push({
         type: 'warning',
         message: 'Improve hand positioning',
-        detail: `${sessionData.positionAccuracy}% accuracy. Focus on placing hands in the center of the target area.`
+        detail: `${sessionData.positionAccuracy}% accuracy. Place the fist midline, just above the navel and well below the breastbone.`
       });
     } else {
       feedback.push({
         type: 'error',
         message: 'Hand position needs attention',
-        detail: `Only ${sessionData.positionAccuracy}% accuracy. Review proper hand placement technique.`
+        detail: `Only ${sessionData.positionAccuracy}% accuracy. Misplaced thrusts are less effective and raise injury risk — review correct landmarking.`
       });
     }
 
-    // Rate feedback
-    const targetRate = 5;
-    if (sessionData.averageRate >= targetRate - 2 && sessionData.averageRate <= targetRate + 2) {
-      feedback.push({
-        type: 'success',
-        message: 'Good rhythm maintained',
-        detail: `Average rate of ${sessionData.averageRate.toFixed(0)} thrusts/min is appropriate for Heimlich maneuver.`
-      });
-    } else if (sessionData.averageRate > targetRate + 2) {
-      feedback.push({
-        type: 'warning',
-        message: 'Slow down your rhythm',
-        detail: `Rate of ${sessionData.averageRate.toFixed(0)} thrusts/min is too fast. Aim for controlled, deliberate thrusts.`
-      });
-    } else if (sessionData.averageRate > 0) {
-      feedback.push({
-        type: 'warning',
-        message: 'Increase thrust frequency',
-        detail: `Rate of ${sessionData.averageRate.toFixed(0)} thrusts/min is too slow. Aim for ${targetRate} thrusts per minute.`
-      });
+    // Rhythm feedback — guidelines call for each thrust to be a separate,
+    // distinct effort (not a continuous or rapid-fire push)
+    const gap = medianThrustGapMs();
+    if (gap !== null) {
+      if (gap < 700) {
+        feedback.push({
+          type: 'warning',
+          message: 'Deliver thrusts as distinct efforts',
+          detail: `Median gap between thrusts was ${(gap / 1000).toFixed(1)}s. Fully release between thrusts — each one should be a separate, deliberate movement.`
+        });
+      } else if (gap <= 3000) {
+        feedback.push({
+          type: 'success',
+          message: 'Good thrust rhythm',
+          detail: `Distinct, deliberate thrusts ~${(gap / 1000).toFixed(1)}s apart, with full release between each — exactly as guidelines describe.`
+        });
+      } else {
+        feedback.push({
+          type: 'warning',
+          message: 'Reduce pauses between thrusts',
+          detail: `Median gap was ${(gap / 1000).toFixed(1)}s. In a real emergency every second counts — repeat thrusts promptly until the obstruction clears.`
+        });
+      }
     }
 
     // Consistency feedback
@@ -186,11 +202,11 @@ export default function AnalyticsScreen() {
         message: 'Excellent force consistency',
         detail: `${consistency}% consistency shows controlled, repeatable technique.`
       });
-    } else if (consistency < 60) {
+    } else if (consistency < 60 && total >= 2) {
       feedback.push({
         type: 'warning',
         message: 'Improve thrust consistency',
-        detail: `${consistency}% consistency. Focus on applying similar force for each thrust.`
+        detail: `${consistency}% consistency. Focus on applying similar force with each thrust.`
       });
     }
 
@@ -201,7 +217,8 @@ export default function AnalyticsScreen() {
     overallScore: calculateScore(),
     duration: sessionData.duration,
     totalThrusts: sessionData.totalThrusts,
-    effectiveThrusts: Math.round(sessionData.totalThrusts * (sessionData.positionAccuracy / 100)),
+    // "Effective" = peak force inside the 40–65N training band
+    effectiveThrusts: countInBandThrusts(),
     averageForce: parseFloat(sessionData.averageForce.toFixed(1)),
     forceConsistency: calculateForceConsistency(), // Real calculation
     positionAccuracy: sessionData.positionAccuracy,
@@ -359,9 +376,9 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   primaryButton: {
-    backgroundColor: theme.colors.success,
+    backgroundColor: theme.colors.primary,
     ...theme.shadows.lg,
-    shadowColor: theme.colors.success,
+    shadowColor: theme.colors.primary,
     shadowOpacity: 0.35,
   },
   primaryButtonText: {
